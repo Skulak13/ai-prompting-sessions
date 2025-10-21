@@ -17,12 +17,3 @@ export type Category =
   | 'polityka'
   | 'sztuka'
   | 'wszystkie';
-
-export interface PhysicsBody {
-  id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-}
