@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
-/* Reset i podstawowe style */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-body {
-  width: 100%;
-  height: 100vh;
-  overflow: hidden; /* Zapobiega scrollowaniu - ważne dla krążących tytułów */
+  body {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
 }
