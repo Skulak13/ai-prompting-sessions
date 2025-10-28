@@ -3,27 +3,58 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ChatCanvas from "./components/ChatCanvas";
 import ChatModal from "./components/ChatModal.tsx";
-import type { Category, Chat } from "./types";
+import type { Category, Chat, RatingFilter } from "./types";
 import { chats } from "./data/chats";
 
 function App() {
   const [activeCategories, setActiveCategories] = useState<Category[]>([
     "wszystkie",
   ]);
+  const [activeRatings, setActiveRatings] = useState<
+    Array<Exclude<RatingFilter, null>>
+  >([]); // Zmienione na tablicę
   const [speed, setSpeed] = useState(1.0);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
-  // Filtruj chaty na podstawie aktywnych kategorii
-  const filteredChats = activeCategories.includes("wszystkie")
-    ? chats
-    : chats.filter((chat) => activeCategories.includes(chat.category));
+  // Filtruj chaty na podstawie aktywnych kategorii i ocen
+  const filteredChats = chats.filter((chat) => {
+    // Filtr kategorii
+    const categoryMatch =
+      activeCategories.includes("wszystkie") ||
+      activeCategories.includes(chat.category);
+
+    // Filtr oceny
+    let ratingMatch = true;
+    if (activeRatings.length > 0 && chat.metrics) {
+      const avgRating =
+        (chat.metrics.clarity +
+          chat.metrics.adaptation +
+          chat.metrics.depth +
+          chat.metrics.criticalThinking) /
+        4;
+
+      ratingMatch = activeRatings.some((rating) => {
+        if (rating === 4) {
+          // Grupa 4 i 4.3
+          return avgRating >= 4 && avgRating < 4.5;
+        } else {
+          // Dokładne dopasowanie dla pozostałych
+          return Math.abs(avgRating - rating) < 0.1;
+        }
+      });
+    }
+
+    return categoryMatch && ratingMatch;
+  });
 
   return (
     <div className="h-screen flex flex-col bg-gray-900">
       <Header
         activeCategories={activeCategories}
         setActiveCategories={setActiveCategories}
+        activeRatings={activeRatings}
+        setActiveRatings={setActiveRatings}
         speed={speed}
         setSpeed={setSpeed}
         isPaused={isPaused}

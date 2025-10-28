@@ -21,11 +21,13 @@ export interface Chat {
   employerValue?: string[];
 }
 
-export type Category = 
-  | 'nauka'
-  | 'filozofia'
-  | 'technologia'
-  | 'historia'
-  | 'polityka'
-  | 'sztuka'
-  | 'wszystkie';
+export type Category =
+  | "nauka"
+  | "filozofia"
+  | "technologia"
+  | "historia"
+  | "polityka"
+  | "sztuka"
+  | "wszystkie";
+
+export type RatingFilter = 4 | 4.5 | 4.8 | 5 | null;
