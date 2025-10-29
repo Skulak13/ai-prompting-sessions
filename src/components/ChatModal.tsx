@@ -4,9 +4,18 @@ import type { Chat } from "../types";
 interface ChatModalProps {
   chat: Chat;
   onClose: () => void;
+  // Lista wszystkich chatów (przekazana z App) - potrzebna, aby znaleźć tytuły powiązanych chatów
+  allChats: Chat[];
+  // Funkcja otwierająca powiązany chat po id (przekazana z App)
+  onOpenRelated: (id: string) => void;
 }
 
-export default function ChatModal({ chat, onClose }: ChatModalProps) {
+export default function ChatModal({
+  chat,
+  onClose,
+  allChats,
+  onOpenRelated,
+}: ChatModalProps) {
   const [activeTab, setActiveTab] = useState<"content" | "analysis">("content");
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
@@ -235,7 +244,7 @@ export default function ChatModal({ chat, onClose }: ChatModalProps) {
                 </div>
               </div>
 
-              {/* Fixed statistics at bottom - NOWA SEKCJA */}
+              {/* Fixed statistics at bottom */}
               <div className="border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-sm p-6">
                 <div className="max-w-4xl mx-auto">
                   <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
@@ -388,7 +397,7 @@ export default function ChatModal({ chat, onClose }: ChatModalProps) {
                     </div>
                   )}
 
-                  {/* Powiązane chaty */}
+                  {/* Powiązane chaty (teraz jako przyciski otwierające modal powiązanego chatu) */}
                   {chat.relatedChats.length > 0 && (
                     <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
                       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -396,14 +405,37 @@ export default function ChatModal({ chat, onClose }: ChatModalProps) {
                         Powiązane tematy
                       </h3>
                       <div className="flex flex-wrap gap-2">
-                        {chat.relatedChats.map((id) => (
-                          <span
-                            key={id}
-                            className="px-4 py-2 bg-gray-700/50 text-gray-300 rounded-lg text-sm hover:bg-gray-600 cursor-pointer transition-all hover:scale-105 border border-gray-600/50"
-                          >
-                            Chat #{id}
-                          </span>
-                        ))}
+                        {chat.relatedChats.map((id) => {
+                          const related = allChats.find((c) => c.id === id);
+                          const label = related ? related.title : `Chat #${id}`;
+                          const disabled = id === chat.id || !related;
+
+                          return (
+                            <button
+                              key={id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!disabled) {
+                                  onOpenRelated(id);
+                                }
+                              }}
+                              disabled={disabled}
+                              aria-disabled={disabled}
+                              className={`px-4 py-2 bg-gray-700/50 text-gray-300 rounded-lg text-sm hover:bg-gray-600 transition-all hover:scale-105 border border-gray-600/50 ${
+                                disabled
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }`}
+                              title={
+                                disabled
+                                  ? "Nie można otworzyć"
+                                  : `Otwórz: ${label}`
+                              }
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

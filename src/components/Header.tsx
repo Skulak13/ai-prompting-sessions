@@ -4,8 +4,8 @@ import avatar from "../assets/images/skulfancy.webp";
 interface HeaderProps {
   activeCategories: Category[];
   setActiveCategories: (categories: Category[]) => void;
-  activeRatings: Array<Exclude<RatingFilter, null>>; // Zmienione na tablicę
-  setActiveRatings: (ratings: Array<Exclude<RatingFilter, null>>) => void; // Zmienione na tablicę
+  activeRatings: Array<Exclude<RatingFilter, null>>;
+  setActiveRatings: (ratings: Array<Exclude<RatingFilter, null>>) => void;
   speed: number;
   setSpeed: (speed: number) => void;
   isPaused: boolean;
@@ -50,29 +50,36 @@ export default function Header({
   setIsPaused,
 }: HeaderProps) {
   const toggleCategory = (category: Category) => {
-    let newCategories = [...activeCategories];
+    // traktujemy jako "wszystkie" zarówno pustą tablicę, jak i pełną tablicę wszystkich kategorii
+    const allState =
+      activeCategories.length === 0 ||
+      activeCategories.length === categories.length;
 
-    if (newCategories.includes(category)) {
-      newCategories = newCategories.filter((c) => c !== category);
-    } else {
-      newCategories.push(category);
+    if (allState) {
+      // pierwsze kliknięcie gdy "wszystko" -> ustaw tylko klikniętą kategorię
+      setActiveCategories([category]);
+      return;
     }
 
-    setActiveCategories(newCategories);
+    // normalny toggle: nie wpływa na pozostałe (dodaj/usuń)
+    if (activeCategories.includes(category)) {
+      setActiveCategories(activeCategories.filter((c) => c !== category));
+    } else {
+      setActiveCategories([...activeCategories, category]);
+    }
   };
 
   const toggleRating = (rating: Exclude<RatingFilter, null>) => {
     if (activeRatings.includes(rating)) {
-      // Jeśli ocena jest już aktywna, usuń ją
       setActiveRatings(activeRatings.filter((r) => r !== rating));
     } else {
-      // Jeśli ocena nie jest aktywna, dodaj ją
       setActiveRatings([...activeRatings, rating]);
     }
   };
 
+  // Przy pustej tablicy (show all) chcemy, żeby przyciski wyglądały na aktywne — dlatego uwzględniamy empty jako "all active"
   const isCategoryActive = (category: Category) => {
-    return activeCategories.includes(category);
+    return activeCategories.length === 0 || activeCategories.includes(category);
   };
 
   const isRatingActive = (rating: Exclude<RatingFilter, null>) => {
@@ -86,17 +93,14 @@ export default function Header({
         <div className="flex flex-col items-center min-w-[120px]">
           <img
             src={avatar}
-            alt="Logo"
-            className="w-20 h-20 mb-2 rounded-full border-2 border-blue-500"
+            alt="Author's photo"
+            className="w-22 h-22 mb-2 rounded-full border-2 border-blue-500"
           />
           <p className="text-gray-300 text-sm font-medium">Tomek Skulski</p>
         </div>
 
         {/* CENTER: Tytuł, podtytuł i filtry */}
         <div className="flex-1 max-w-4xl">
-          {" "}
-          {/* Zmienione na max-w-4xl dla więcej miejsca */}
-          {/* Tytuł i podtytuł */}
           <div className="mb-4">
             <h1 className="text-3xl font-bold text-white mb-2">
               AI Conversations Portfolio
@@ -105,11 +109,8 @@ export default function Header({
               Eksploracja wiedzy poprzez inteligentne dialogi z AI
             </p>
           </div>
-          {/* Filtry kategorii i ocen w jednym szeregu */}
+
           <div className="flex items-center gap-6">
-            {" "}
-            {/* Usunięto flex-wrap, zwiększono gap */}
-            {/* Kategorie */}
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
@@ -125,9 +126,9 @@ export default function Header({
                 </button>
               ))}
             </div>
-            {/* Separator (opcjonalny) – usuń jeśli niepotrzebny */}
+
             <div className="h-6 w-px bg-gray-600"></div>
-            {/* Oceny */}
+
             <div className="flex flex-wrap gap-2">
               {ratings.map((rating) => (
                 <button
@@ -148,7 +149,6 @@ export default function Header({
 
         {/* RIGHT: Kontrolki animacji */}
         <div className="flex flex-col gap-4 min-w-[200px]">
-          {/* Przycisk Play/Pause */}
           <button
             onClick={() => setIsPaused(!isPaused)}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
@@ -178,7 +178,6 @@ export default function Header({
             )}
           </button>
 
-          {/* Suwak prędkości */}
           <div className="flex flex-col gap-2">
             <label className="text-gray-400 text-xs font-medium">
               Prędkość: {speed.toFixed(1)}x

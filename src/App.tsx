@@ -79,7 +79,17 @@ function App() {
       <Footer />
 
       {selectedChat && (
-        <ChatModal chat={selectedChat} onClose={() => setSelectedChat(null)} />
+        <ChatModal
+          chat={selectedChat}
+          onClose={() => setSelectedChat(null)}
+          allChats={chats}
+          onOpenRelated={(id: string) => {
+            const found = chats.find((c) => c.id === id);
+            if (found) {
+              setSelectedChat(found);
+            }
+          }}
+        />
       )}
     </div>
   );

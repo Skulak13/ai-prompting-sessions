@@ -3,7 +3,7 @@ export default function Footer() {
     <footer className="bg-gray-800 border-t border-gray-700 px-8 py-4">
       <div className="flex items-center justify-center gap-6">
         <a
-          href="https://linkedin.com"
+          href="https://www.linkedin.com/in/tomasz-skulski/"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-colors"
@@ -15,7 +15,7 @@ export default function Footer() {
         </a>
 
         <a
-          href="https://github.com"
+          href="https://github.com/Skulak13"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-colors"
@@ -27,7 +27,7 @@ export default function Footer() {
         </a>
 
         <a
-          href="https://codewars.com"
+          href="https://www.codewars.com/users/Skulak13"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-colors"
