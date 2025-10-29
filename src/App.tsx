@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ChatCanvas from "./components/ChatCanvas";
@@ -8,7 +8,12 @@ import { chats } from "./data/chats";
 
 function App() {
   const [activeCategories, setActiveCategories] = useState<Category[]>([
-    "wszystkie",
+    "nauka",
+    "filozofia",
+    "technologia",
+    "historia",
+    "polityka",
+    "sztuka",
   ]);
   const [activeRatings, setActiveRatings] = useState<
     Array<Exclude<RatingFilter, null>>
@@ -17,36 +22,39 @@ function App() {
   const [isPaused, setIsPaused] = useState(false);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
-  // Filtruj chaty na podstawie aktywnych kategorii i ocen
-  const filteredChats = chats.filter((chat) => {
-    // Filtr kategorii
-    const categoryMatch =
-      activeCategories.includes("wszystkie") ||
-      activeCategories.includes(chat.category);
+  // Memoizujemy filteredChats, aby referencja tablicy zmieniała się tylko kiedy naprawdę
+  // zmienią się filtry (activeCategories / activeRatings).
+  const filteredChats = useMemo(() => {
+    return chats.filter((chat) => {
+      // Filtr kategorii
+      const categoryMatch =
+        activeCategories.length === 0 ||
+        activeCategories.includes(chat.category);
 
-    // Filtr oceny
-    let ratingMatch = true;
-    if (activeRatings.length > 0 && chat.metrics) {
-      const avgRating =
-        (chat.metrics.clarity +
-          chat.metrics.adaptation +
-          chat.metrics.depth +
-          chat.metrics.criticalThinking) /
-        4;
+      // Filtr oceny
+      let ratingMatch = true;
+      if (activeRatings.length > 0 && chat.metrics) {
+        const avgRating =
+          (chat.metrics.clarity +
+            chat.metrics.adaptation +
+            chat.metrics.depth +
+            chat.metrics.criticalThinking) /
+          4;
 
-      ratingMatch = activeRatings.some((rating) => {
-        if (rating === 4) {
-          // Grupa 4 i 4.3
-          return avgRating >= 4 && avgRating < 4.5;
-        } else {
-          // Dokładne dopasowanie dla pozostałych
-          return Math.abs(avgRating - rating) < 0.1;
-        }
-      });
-    }
+        ratingMatch = activeRatings.some((rating) => {
+          if (rating === 4) {
+            // Grupa 4 i 4.3
+            return avgRating >= 4 && avgRating < 4.5;
+          } else {
+            // Dokładne dopasowanie dla pozostałych
+            return Math.abs(avgRating - rating) < 0.1;
+          }
+        });
+      }
 
-    return categoryMatch && ratingMatch;
-  });
+      return categoryMatch && ratingMatch;
+    });
+  }, [activeCategories, activeRatings]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-900">

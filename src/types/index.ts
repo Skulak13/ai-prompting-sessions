@@ -27,7 +27,6 @@ export type Category =
   | "technologia"
   | "historia"
   | "polityka"
-  | "sztuka"
-  | "wszystkie";
+  | "sztuka";
 
 export type RatingFilter = 4 | 4.5 | 4.8 | 5 | null;

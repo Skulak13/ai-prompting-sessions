@@ -19,7 +19,6 @@ const categories: Category[] = [
   "historia",
   "polityka",
   "sztuka",
-  "wszystkie",
 ];
 
 const categoryLabels: Record<Category, string> = {
@@ -29,7 +28,6 @@ const categoryLabels: Record<Category, string> = {
   historia: "Historia",
   polityka: "Polityka",
   sztuka: "Sztuka",
-  wszystkie: "Wszystkie",
 };
 
 const ratings: Array<Exclude<RatingFilter, null>> = [4, 4.5, 4.8, 5];
@@ -52,18 +50,10 @@ export default function Header({
   setIsPaused,
 }: HeaderProps) {
   const toggleCategory = (category: Category) => {
-    if (category === "wszystkie") {
-      setActiveCategories(["wszystkie"]);
-      return;
-    }
-
-    let newCategories = activeCategories.filter((c) => c !== "wszystkie");
+    let newCategories = [...activeCategories];
 
     if (newCategories.includes(category)) {
       newCategories = newCategories.filter((c) => c !== category);
-      if (newCategories.length === 0) {
-        newCategories = ["wszystkie"];
-      }
     } else {
       newCategories.push(category);
     }
@@ -82,10 +72,7 @@ export default function Header({
   };
 
   const isCategoryActive = (category: Category) => {
-    return (
-      activeCategories.includes(category) ||
-      activeCategories.includes("wszystkie")
-    );
+    return activeCategories.includes(category);
   };
 
   const isRatingActive = (rating: Exclude<RatingFilter, null>) => {
@@ -106,7 +93,9 @@ export default function Header({
         </div>
 
         {/* CENTER: Tytuł, podtytuł i filtry */}
-        <div className="flex-1 max-w-3xl">
+        <div className="flex-1 max-w-4xl">
+          {" "}
+          {/* Zmienione na max-w-4xl dla więcej miejsca */}
           {/* Tytuł i podtytuł */}
           <div className="mb-4">
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -116,9 +105,11 @@ export default function Header({
               Eksploracja wiedzy poprzez inteligentne dialogi z AI
             </p>
           </div>
-
-          {/* Kategorie */}
-          <div className="mb-3">
+          {/* Filtry kategorii i ocen w jednym szeregu */}
+          <div className="flex items-center gap-6">
+            {" "}
+            {/* Usunięto flex-wrap, zwiększono gap */}
+            {/* Kategorie */}
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
@@ -134,10 +125,9 @@ export default function Header({
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Oceny */}
-          <div>
+            {/* Separator (opcjonalny) – usuń jeśli niepotrzebny */}
+            <div className="h-6 w-px bg-gray-600"></div>
+            {/* Oceny */}
             <div className="flex flex-wrap gap-2">
               {ratings.map((rating) => (
                 <button
