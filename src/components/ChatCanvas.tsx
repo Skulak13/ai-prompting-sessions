@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Chat } from "../types";
 
 interface Circle {
@@ -30,54 +30,65 @@ export default function ChatCanvas({
   const hoveredCircleRef = useRef<Circle | null>(null);
 
   const BASE_SPEED = 1.25;
-  const RADIUS = 60;
 
-  // --- NOWE STAŁE DLA FIZYKI ---
-  // Odległość, na jaką koła i ściany zaczynają się odpychać
-  // Musi być większa niż RADIUS
+  // Dynamiczny radius w zależności od szerokości ekranu
+  const getRadius = () => {
+    const width = window.innerWidth;
+    if (width >= 1200) return 60; // Desktop
+    if (width >= 768) return 45; // Tablet
+    return 35; // Mobile
+  };
+
+  const [RADIUS, setRADIUS] = useState(getRadius());
+
+  // Stałe fizyki zależne od radiusa
   const REPULSION_DISTANCE = RADIUS * 2.2;
   const WALL_REPULSION_DISTANCE = RADIUS * 1.5;
-
-  // Siła odpychania (dostosuj te wartości eksperymentalnie)
   const CIRCLE_REPULSION_STRENGTH = 0.5;
   const WALL_REPULSION_STRENGTH = 1.0;
-
-  // Tłumienie (damping) - zapobiega "eksplozji" prędkości, stabilizuje system
-  // Wartość bliska 1.0 (np. 0.95 - 0.99)
   const DAMPING = 0.97;
-  // --- KONIEC NOWYCH STAŁYCH ---
 
-  // Bez zmian: Normalizacja prędkości
+  // Nasłuchuj zmian rozmiaru okna
+  useEffect(() => {
+    const handleResize = () => {
+      const newRadius = getRadius();
+      if (newRadius !== RADIUS) {
+        setRADIUS(newRadius);
+        // Zresetuj koła z nowym radiusem
+        circlesRef.current = [];
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [RADIUS]);
+
+  // Normalizacja prędkości
   const normalizeVelocity = (circle: Circle, targetSpeed: number) => {
     const currentSpeed = Math.sqrt(
       circle.vx * circle.vx + circle.vy * circle.vy
     );
-    // Utrzymujemy prędkość bazową, siły zmieniają tylko kierunek
     if (currentSpeed > 0.01) {
       circle.vx = (circle.vx / currentSpeed) * targetSpeed;
       circle.vy = (circle.vy / currentSpeed) * targetSpeed;
     } else if (targetSpeed > 0) {
-      // Jeśli utknie, nadaj losowy kierunek
       const angle = Math.random() * Math.PI * 2;
       circle.vx = Math.cos(angle) * targetSpeed;
       circle.vy = Math.sin(angle) * targetSpeed;
     }
   };
 
-  // Bez zmian: Sprawdzanie kolizji (używane tylko przy inicjalizacji)
+  // Sprawdzanie kolizji przy inicjalizacji
   const checkCircleCollision = (c1: Circle, c2: Circle): boolean => {
     const dx = c2.x - c1.x;
     const dy = c2.y - c1.y;
     const distanceSq = dx * dx + dy * dy;
     const minDistance = c1.radius + c2.radius;
-    // Dajemy mały bufor przy inicjalizacji
     const buffer = 5;
     return distanceSq < (minDistance + buffer) * (minDistance + buffer);
   };
 
-  // USUNIĘTE: resolveCircleCollision - już niepotrzebne
-
-  // Bez zmian: Inicjalizacja koła
+  // Inicjalizacja koła
   const initializeCircle = (
     chat: Chat,
     width: number,
@@ -111,7 +122,7 @@ export default function ChatCanvas({
     return circle;
   };
 
-  // Bez zmian: Rysowanie koła
+  // Rysowanie koła z responsywnym fontem
   const drawCircle = (
     ctx: CanvasRenderingContext2D,
     circle: Circle,
@@ -119,13 +130,11 @@ export default function ChatCanvas({
   ) => {
     const { x, y, radius, chat } = circle;
 
-    // Cień
     ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
     ctx.shadowBlur = 15;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
-    // Tło
     ctx.fillStyle = isHovered
       ? "rgba(37, 99, 235, 0.3)"
       : "rgba(31, 41, 55, 0.9)";
@@ -133,7 +142,6 @@ export default function ChatCanvas({
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Obramowanie
     ctx.strokeStyle = isHovered
       ? "rgba(96, 165, 250, 1)"
       : "rgba(59, 130, 246, 0.5)";
@@ -142,20 +150,23 @@ export default function ChatCanvas({
 
     ctx.shadowColor = "transparent";
 
-    // Emoji
-    ctx.font = "32px Arial";
+    // Responsywny rozmiar emoji
+    const emojiFontSize = Math.floor(radius * 0.5);
+    ctx.font = `${emojiFontSize}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "white";
-    ctx.fillText(chat.emoji || "💬", x, y - 12);
+    ctx.fillText(chat.emoji || "💬", x, y - radius * 0.2);
 
-    // Tytuł
-    ctx.font = "12px Arial";
+    // Responsywny rozmiar tytułu
+    const titleFontSize = Math.floor(radius * 0.2);
+    ctx.font = `${titleFontSize}px Arial`;
     ctx.fillStyle = "white";
     const words = chat.title.split(" ");
     let line = "";
-    let lineY = y + 18;
+    let lineY = y + radius * 0.3;
     const maxWidth = radius * 1.6;
+    const lineHeight = titleFontSize * 1.2;
 
     for (let i = 0; i < words.length; i++) {
       const testLine = line + words[i] + " ";
@@ -163,7 +174,7 @@ export default function ChatCanvas({
       if (metrics.width > maxWidth && i > 0) {
         ctx.fillText(line.trim(), x, lineY);
         line = words[i] + " ";
-        lineY += 14;
+        lineY += lineHeight;
       } else {
         line = testLine;
       }
@@ -171,7 +182,7 @@ export default function ChatCanvas({
     ctx.fillText(line.trim(), x, lineY);
   };
 
-  // Bez zmian: Znajdź koło pod kursorem
+  // Znajdź koło pod kursorem
   const getCircleAtPosition = (x: number, y: number): Circle | null => {
     for (let i = circlesRef.current.length - 1; i >= 0; i--) {
       const circle = circlesRef.current[i];
@@ -184,7 +195,7 @@ export default function ChatCanvas({
     return null;
   };
 
-  // Bez zmian: Obsługa kliknięcia i najechania
+  // Obsługa kliknięcia i najechania
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -218,7 +229,7 @@ export default function ChatCanvas({
     };
   }, [onChatClick]);
 
-  // Bez zmian: Resize canvas i inicjalizacja
+  // Resize canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -240,7 +251,6 @@ export default function ChatCanvas({
         ctx.scale(dpr, dpr);
       }
 
-      // Dostosuj pozycje kół po resize
       circlesRef.current.forEach((c) => {
         c.x = Math.min(Math.max(c.x, RADIUS), rect.width - RADIUS);
         c.y = Math.min(Math.max(c.y, RADIUS), rect.height - RADIUS);
@@ -250,9 +260,9 @@ export default function ChatCanvas({
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
     return () => window.removeEventListener("resize", resizeCanvas);
-  }, []);
+  }, [RADIUS]);
 
-  // Bez zmian: Inicjalizacja kół
+  // Inicjalizacja kół
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -269,6 +279,7 @@ export default function ChatCanvas({
       const existing = existingMap.get(chat.id);
       if (existing) {
         existing.chat = chat;
+        existing.radius = RADIUS;
         existing.x = Math.min(Math.max(existing.x, RADIUS), width - RADIUS);
         existing.y = Math.min(Math.max(existing.y, RADIUS), height - RADIUS);
         newCircles.push(existing);
@@ -278,9 +289,9 @@ export default function ChatCanvas({
     });
 
     circlesRef.current = newCircles;
-  }, [chats]);
+  }, [chats, RADIUS]);
 
-  // --- ZMODYFIKOWANA: Główna pętla animacji ---
+  // Główna pętla animacji (bez zmian w logice fizyki)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -297,12 +308,9 @@ export default function ChatCanvas({
 
       if (!isPaused && circlesRef.current.length > 0) {
         const circles = circlesRef.current;
-
-        // Mapa do przechowywania sumy sił dla każdego koła
         const forces = new Map<string, { fx: number; fy: number }>();
         circles.forEach((c) => forces.set(c.id, { fx: 0, fy: 0 }));
 
-        // 1. Oblicz siły odpychania między kołami
         for (let i = 0; i < circles.length; i++) {
           const c1 = circles[i];
           for (let j = i + 1; j < circles.length; j++) {
@@ -312,18 +320,15 @@ export default function ChatCanvas({
             const dy = c2.y - c1.y;
             let distance = Math.sqrt(dx * dx + dy * dy);
 
-            if (distance < 0.1) distance = 0.1; // Zapobiegaj dzieleniu przez zero
+            if (distance < 0.1) distance = 0.1;
 
             if (distance < REPULSION_DISTANCE) {
-              // Oblicz siłę odpychania (np. liniowo rosnącą im bliżej)
               const overlap = REPULSION_DISTANCE - distance;
               const forceMagnitude = overlap * CIRCLE_REPULSION_STRENGTH;
 
-              // Rozkład siły na komponenty
               const forceX = (dx / distance) * forceMagnitude;
               const forceY = (dy / distance) * forceMagnitude;
 
-              // Dodaj siły (w przeciwnych kierunkach)
               const f1 = forces.get(c1.id)!;
               f1.fx -= forceX;
               f1.fy -= forceY;
@@ -335,12 +340,10 @@ export default function ChatCanvas({
           }
         }
 
-        // 2. Zastosuj siły, tłumienie i ruch
         circles.forEach((circle) => {
           const force = forces.get(circle.id)!;
           let { fx, fy } = force;
 
-          // 2a. Oblicz siły odpychania od ścian
           if (circle.x < WALL_REPULSION_DISTANCE) {
             const overlap = WALL_REPULSION_DISTANCE - circle.x;
             fx += overlap * WALL_REPULSION_STRENGTH;
@@ -356,23 +359,17 @@ export default function ChatCanvas({
             fy -= overlap * WALL_REPULSION_STRENGTH;
           }
 
-          // 2b. Zastosuj siły jako przyspieszenie
           circle.vx += fx;
           circle.vy += fy;
 
-          // 2c. Zastosuj tłumienie (opór)
           circle.vx *= DAMPING;
           circle.vy *= DAMPING;
 
-          // 2d. Znormalizuj prędkość (siły sterują kierunkiem, nie prędkością)
           normalizeVelocity(circle, BASE_SPEED * speed);
 
-          // 2e. Zastosuj ruch
           circle.x += circle.vx;
           circle.y += circle.vy;
 
-          // 2f. Twarda kolizja ze ścianą (jako zabezpieczenie)
-          // Na wypadek gdyby siła odpychania nie wystarczyła
           if (circle.x - circle.radius < 0) {
             circle.x = circle.radius;
             circle.vx = Math.abs(circle.vx);
@@ -390,7 +387,6 @@ export default function ChatCanvas({
         });
       }
 
-      // 3. Rysuj wszystkie koła (bez zmian)
       circlesRef.current.forEach((circle) => {
         drawCircle(ctx, circle, circle === hoveredCircleRef.current);
       });
@@ -405,7 +401,7 @@ export default function ChatCanvas({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [speed, isPaused]); // Zależności bez zmian
+  }, [speed, isPaused, RADIUS, REPULSION_DISTANCE, WALL_REPULSION_DISTANCE]);
 
   return (
     <div className="flex-1 relative bg-gray-900 overflow-hidden">

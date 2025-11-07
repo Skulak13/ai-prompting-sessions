@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Category, RatingFilter } from "../types";
 import avatar from "../assets/images/skulfancy.webp";
 
@@ -49,19 +50,18 @@ export default function Header({
   isPaused,
   setIsPaused,
 }: HeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const toggleCategory = (category: Category) => {
-    // traktujemy jako "wszystkie" zarówno pustą tablicę, jak i pełną tablicę wszystkich kategorii
     const allState =
       activeCategories.length === 0 ||
       activeCategories.length === categories.length;
 
     if (allState) {
-      // pierwsze kliknięcie gdy "wszystko" -> ustaw tylko klikniętą kategorię
       setActiveCategories([category]);
       return;
     }
 
-    // normalny toggle: nie wpływa na pozostałe (dodaj/usuń)
     if (activeCategories.includes(category)) {
       setActiveCategories(activeCategories.filter((c) => c !== category));
     } else {
@@ -77,30 +77,30 @@ export default function Header({
     }
   };
 
-  // Przy pustej tablicy (show all) chcemy, żeby przyciski wyglądały na aktywne — dlatego uwzględniamy empty jako "all active"
-  const isCategoryActive = (category: Category) => {
-    return activeCategories.length === 0 || activeCategories.includes(category);
-  };
+  const isCategoryActive = (category: Category) =>
+    activeCategories.length === 0 || activeCategories.includes(category);
 
-  const isRatingActive = (rating: Exclude<RatingFilter, null>) => {
-    return activeRatings.includes(rating);
-  };
+  const isRatingActive = (rating: Exclude<RatingFilter, null>) =>
+    activeRatings.includes(rating);
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700 px-8 py-6">
-      <div className="flex items-start justify-between gap-6">
-        {/* LEFT: Logo i nazwisko */}
-        <div className="flex flex-col items-center min-w-[120px]">
+    <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 xl:px-8 xl:py-6 relative">
+      {/* ========== XL+ (original layout) ========== */}
+      <div className="hidden xl:flex items-start justify-between gap-6">
+        {/* LEFT: Avatar + name (stacked vertically) */}
+        <div className="flex flex-col items-center justify-start min-w-[120px]">
           <img
             src={avatar}
             alt="Author's photo"
             className="w-22 h-22 mb-2 rounded-full border-2 border-blue-500"
           />
-          <p className="text-gray-300 text-sm font-medium">Tomek Skulski</p>
+          <p className="text-gray-300 text-sm font-medium whitespace-nowrap leading-none">
+            Tomek Skulski
+          </p>
         </div>
 
-        {/* CENTER: Tytuł, podtytuł i filtry */}
-        <div className="flex-1 max-w-4xl">
+        {/* CENTER: Title + Subtitle + Filters */}
+        <div className="flex-1 max-w-4xl text-center">
           <div className="mb-4">
             <h1 className="text-3xl font-bold text-white mb-2">
               AI Conversations Portfolio
@@ -110,8 +110,8 @@ export default function Header({
             </p>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="flex flex-wrap gap-2">
+          <div className="flex items-center justify-center gap-6">
+            <div className="flex flex-wrap gap-2 justify-center">
               {categories.map((category) => (
                 <button
                   key={category}
@@ -129,7 +129,7 @@ export default function Header({
 
             <div className="h-6 w-px bg-gray-600"></div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-center">
               {ratings.map((rating) => (
                 <button
                   key={rating}
@@ -147,7 +147,7 @@ export default function Header({
           </div>
         </div>
 
-        {/* RIGHT: Kontrolki animacji */}
+        {/* RIGHT: Controls */}
         <div className="flex flex-col gap-4 min-w-[200px]">
           <button
             onClick={() => setIsPaused(!isPaused)}
@@ -198,6 +198,149 @@ export default function Header({
           </div>
         </div>
       </div>
+
+      {/* ========== <XL (mobile/tablet) layout ========== */}
+      <div className="xl:hidden flex items-center justify-between gap-4">
+        {/* LEFT: avatar + name stacked */}
+        <div className="flex flex-col items-center justify-start min-w-[68px]">
+          <img
+            src={avatar}
+            alt="Author"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-blue-500"
+          />
+          <p className="text-gray-300 text-[10px] sm:text-xs font-medium whitespace-nowrap leading-none tracking-tight mt-1">
+            Tomek Skulski
+          </p>
+        </div>
+
+        {/* CENTER: title + subtitle */}
+        <div className="flex-1 text-center px-2">
+          <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">
+            AI Conversations Portfolio
+          </h1>
+          <p className="text-gray-400 text-xs sm:text-sm mt-0.5">
+            Eksploracja wiedzy poprzez inteligentne dialogi z AI
+          </p>
+        </div>
+
+        {/* RIGHT: hamburger */}
+        <div className="flex items-center">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 rounded-md hover:bg-gray-700 text-gray-200 transition bg-gray-700/0"
+            aria-label="Menu"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              {menuOpen ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 6h18M3 12h18M3 18h18"
+                />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile dropdown menu */}
+      {menuOpen && (
+        <div className="xl:hidden mt-2 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-lg z-50">
+          <div className="flex flex-wrap justify-center gap-2 mb-3">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => toggleCategory(category)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isCategoryActive(category)
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                {categoryLabels[category]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-4">
+            {ratings.map((rating) => (
+              <button
+                key={rating}
+                onClick={() => toggleRating(rating)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isRatingActive(rating)
+                    ? "bg-amber-600 text-white"
+                    : "bg-gray-700 text-amber-300 hover:bg-gray-600"
+                }`}
+              >
+                {ratingLabels[rating]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full max-w-[220px]"
+            >
+              {isPaused ? (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                  <span>Wznów</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
+                  </svg>
+                  <span>Pauza</span>
+                </>
+              )}
+            </button>
+
+            <div className="w-full max-w-[250px]">
+              <label className="text-gray-400 text-xs font-medium">
+                Prędkość: {speed.toFixed(1)}x
+              </label>
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.1"
+                value={speed}
+                onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Wolno</span>
+                <span>Szybko</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
