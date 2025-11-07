@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Category, RatingFilter } from "../types";
 import avatar from "../assets/images/skulfancy.webp";
 
@@ -51,6 +52,9 @@ export default function Header({
   setIsPaused,
 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuRect, setMenuRect] = useState({ top: 0, left: 0, width: 0 });
+  const headerRef = useRef<HTMLElement | null>(null);
+  const portalRef = useRef<HTMLDivElement | null>(null);
 
   const toggleCategory = (category: Category) => {
     const allState =
@@ -83,11 +87,153 @@ export default function Header({
   const isRatingActive = (rating: Exclude<RatingFilter, null>) =>
     activeRatings.includes(rating);
 
+  // compute menu position under header (so it overlays the canvas)
+  const computeMenuRect = () => {
+    const el = headerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setMenuRect({
+      top: rect.bottom + window.scrollY, // fixed relative to document
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+  };
+
+  useEffect(() => {
+    if (menuOpen) {
+      computeMenuRect();
+    }
+    const onResize = () => {
+      if (menuOpen) computeMenuRect();
+    };
+    const onScroll = () => {
+      if (menuOpen) computeMenuRect();
+    };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [menuOpen]);
+
+  // close on Escape and close on click outside portal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    const onDocClick = (e: MouseEvent) => {
+      if (!menuOpen) return;
+      const target = e.target as Node;
+      if (!portalRef.current) return;
+      if (
+        !portalRef.current.contains(target) &&
+        !headerRef.current?.contains(target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDocClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDocClick);
+    };
+  }, [menuOpen]);
+
+  // render overlay (portal) content
+  const MenuPortal = () => {
+    // don't render on xl+ (menu isn't used there)
+    // but we still allow portal to exist — Tailwind classes hide it.
+    const style: React.CSSProperties = {
+      position: "fixed",
+      top: menuRect.top,
+      left: menuRect.left,
+      width: menuRect.width,
+      zIndex: 70,
+    };
+
+    return createPortal(
+      <div
+        ref={portalRef}
+        style={style}
+        className="xl:hidden"
+        aria-hidden={!menuOpen}
+      >
+        <div className="mt-0 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-2xl">
+          <div className="flex flex-wrap justify-center gap-2 mb-3">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => toggleCategory(category)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isCategoryActive(category)
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                }`}
+              >
+                {categoryLabels[category]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-4">
+            {ratings.map((rating) => (
+              <button
+                key={rating}
+                onClick={() => toggleRating(rating)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isRatingActive(rating)
+                    ? "bg-amber-600 text-white"
+                    : "bg-gray-700 text-amber-300 hover:bg-gray-600"
+                }`}
+              >
+                {ratingLabels[rating]}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full max-w-[220px]"
+            >
+              {isPaused ? "▶ Wznów" : "⏸ Pauza"}
+            </button>
+
+            <div className="w-full max-w-[250px]">
+              <label className="text-gray-400 text-xs font-medium">
+                Prędkość: {speed.toFixed(1)}x
+              </label>
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.1"
+                value={speed}
+                onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Wolno</span>
+                <span>Szybko</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   return (
-    <header className="bg-gray-800 border-b border-gray-700 px-8 py-6 relative">
-      {/* ================= XL+ (>=1280px) - exactly like original code ================= */}
+    <header
+      ref={headerRef}
+      className="bg-gray-800 border-b border-gray-700 px-8 py-6 relative"
+    >
+      {/* XL+ layout (unchanged) */}
       <div className="hidden xl:flex items-start justify-between gap-6">
-        {/* LEFT: Avatar + name (stacked vertically) */}
         <div className="flex flex-col items-center min-w-[120px]">
           <img
             src={avatar}
@@ -99,7 +245,6 @@ export default function Header({
           </p>
         </div>
 
-        {/* CENTER: Title, subtitle and filters (original layout) */}
         <div className="flex-1 max-w-4xl">
           <div className="mb-4">
             <h1 className="text-3xl font-bold text-white mb-2">
@@ -147,7 +292,6 @@ export default function Header({
           </div>
         </div>
 
-        {/* RIGHT: Controls (animation & speed) */}
         <div className="flex flex-col gap-4 min-w-[200px]">
           <button
             onClick={() => setIsPaused(!isPaused)}
@@ -199,9 +343,8 @@ export default function Header({
         </div>
       </div>
 
-      {/* ================= <1280px (tablet & mobile) layout ================= */}
+      {/* <1280px header (avatar left, title centered, hamburger right) */}
       <div className="xl:hidden flex items-center justify-between gap-4">
-        {/* LEFT: avatar + name stacked vertically (always left) */}
         <div className="flex flex-col items-center justify-start min-w-[78px]">
           <img
             src={avatar}
@@ -213,7 +356,6 @@ export default function Header({
           </p>
         </div>
 
-        {/* CENTER: title + subtitle (centered on <xl) */}
         <div className="flex-1 text-center px-2">
           <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">
             AI Conversations Portfolio
@@ -223,10 +365,18 @@ export default function Header({
           </p>
         </div>
 
-        {/* RIGHT: hamburger to open menu with filters & controls */}
         <div className="flex items-center">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={() => {
+              // toggle and compute position on open
+              setMenuOpen((s) => {
+                const next = !s;
+                if (!next) return false;
+                // if opening, compute position next tick
+                setTimeout(() => computeMenuRect(), 0);
+                return next;
+              });
+            }}
             className="p-2 rounded-md hover:bg-gray-700 text-gray-200 transition bg-gray-700/0"
             aria-label="Menu"
           >
@@ -255,92 +405,8 @@ export default function Header({
         </div>
       </div>
 
-      {/* Dropdown menu for <xl screens */}
-      {menuOpen && (
-        <div className="xl:hidden mt-2 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-lg z-50">
-          <div className="flex flex-wrap justify-center gap-2 mb-3">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => toggleCategory(category)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isCategoryActive(category)
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                {categoryLabels[category]}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
-            {ratings.map((rating) => (
-              <button
-                key={rating}
-                onClick={() => toggleRating(rating)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isRatingActive(rating)
-                    ? "bg-amber-600 text-white"
-                    : "bg-gray-700 text-amber-300 hover:bg-gray-600"
-                }`}
-              >
-                {ratingLabels[rating]}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col items-center gap-3">
-            <button
-              onClick={() => setIsPaused(!isPaused)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full max-w-[220px]"
-            >
-              {isPaused ? (
-                <>
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
-                  <span>Wznów</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
-                  </svg>
-                  <span>Pauza</span>
-                </>
-              )}
-            </button>
-
-            <div className="w-full max-w-[250px]">
-              <label className="text-gray-400 text-xs font-medium">
-                Prędkość: {speed.toFixed(1)}x
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="3"
-                step="0.1"
-                value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-              />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Wolno</span>
-                <span>Szybko</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Render portal when open so the menu overlays the canvas and doesn't affect layout */}
+      {menuOpen && <MenuPortal />}
     </header>
   );
 }
