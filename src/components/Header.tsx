@@ -84,11 +84,11 @@ export default function Header({
     activeRatings.includes(rating);
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 xl:px-8 xl:py-6 relative">
-      {/* ========== XL+ (original layout) ========== */}
+    <header className="bg-gray-800 border-b border-gray-700 px-8 py-6 relative">
+      {/* ================= XL+ (>=1280px) - exactly like original code ================= */}
       <div className="hidden xl:flex items-start justify-between gap-6">
         {/* LEFT: Avatar + name (stacked vertically) */}
-        <div className="flex flex-col items-center justify-start min-w-[120px]">
+        <div className="flex flex-col items-center min-w-[120px]">
           <img
             src={avatar}
             alt="Author's photo"
@@ -99,8 +99,8 @@ export default function Header({
           </p>
         </div>
 
-        {/* CENTER: Title + Subtitle + Filters */}
-        <div className="flex-1 max-w-4xl text-center">
+        {/* CENTER: Title, subtitle and filters (original layout) */}
+        <div className="flex-1 max-w-4xl">
           <div className="mb-4">
             <h1 className="text-3xl font-bold text-white mb-2">
               AI Conversations Portfolio
@@ -110,8 +110,8 @@ export default function Header({
             </p>
           </div>
 
-          <div className="flex items-center justify-center gap-6">
-            <div className="flex flex-wrap gap-2 justify-center">
+          <div className="flex items-center gap-6">
+            <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
                   key={category}
@@ -129,7 +129,7 @@ export default function Header({
 
             <div className="h-6 w-px bg-gray-600"></div>
 
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap gap-2">
               {ratings.map((rating) => (
                 <button
                   key={rating}
@@ -147,7 +147,7 @@ export default function Header({
           </div>
         </div>
 
-        {/* RIGHT: Controls */}
+        {/* RIGHT: Controls (animation & speed) */}
         <div className="flex flex-col gap-4 min-w-[200px]">
           <button
             onClick={() => setIsPaused(!isPaused)}
@@ -199,21 +199,21 @@ export default function Header({
         </div>
       </div>
 
-      {/* ========== <XL (mobile/tablet) layout ========== */}
+      {/* ================= <1280px (tablet & mobile) layout ================= */}
       <div className="xl:hidden flex items-center justify-between gap-4">
-        {/* LEFT: avatar + name stacked */}
-        <div className="flex flex-col items-center justify-start min-w-[68px]">
+        {/* LEFT: avatar + name stacked vertically (always left) */}
+        <div className="flex flex-col items-center justify-start min-w-[78px]">
           <img
             src={avatar}
             alt="Author"
-            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-blue-500"
+            className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 border-blue-500"
           />
-          <p className="text-gray-300 text-[10px] sm:text-xs font-medium whitespace-nowrap leading-none tracking-tight mt-1">
+          <p className="text-gray-300 text-xs sm:text-sm font-medium whitespace-nowrap leading-none tracking-tight mt-1">
             Tomek Skulski
           </p>
         </div>
 
-        {/* CENTER: title + subtitle */}
+        {/* CENTER: title + subtitle (centered on <xl) */}
         <div className="flex-1 text-center px-2">
           <h1 className="text-lg sm:text-2xl font-bold text-white leading-tight">
             AI Conversations Portfolio
@@ -223,7 +223,7 @@ export default function Header({
           </p>
         </div>
 
-        {/* RIGHT: hamburger */}
+        {/* RIGHT: hamburger to open menu with filters & controls */}
         <div className="flex items-center">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -255,7 +255,7 @@ export default function Header({
         </div>
       </div>
 
-      {/* Mobile dropdown menu */}
+      {/* Dropdown menu for <xl screens */}
       {menuOpen && (
         <div className="xl:hidden mt-2 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-lg z-50">
           <div className="flex flex-wrap justify-center gap-2 mb-3">
