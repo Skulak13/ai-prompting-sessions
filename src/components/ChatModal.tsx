@@ -84,7 +84,7 @@ export default function ChatModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-8"
       onClick={onClose}
     >
       <div
@@ -92,26 +92,28 @@ export default function ChatModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header z tabami */}
-        <div className="bg-gray-900/50 border-b border-gray-700/50 p-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <span className="text-5xl drop-shadow-lg">{chat.emoji}</span>
+        <div className="bg-gray-900/50 border-b border-gray-700/50 p-3 sm:p-4 xl:p-6">
+          <div className="flex items-start justify-between mb-3 sm:mb-3 xl:mb-4">
+            <div className="flex items-center gap-2 sm:gap-3 xl:gap-4">
+              <span className="text-3xl sm:text-4xl xl:text-5xl drop-shadow-lg">
+                {chat.emoji}
+              </span>
               <div>
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-white mb-1 sm:mb-1.5 xl:mb-2">
                   {chat.title}
                 </h2>
-                <span className="inline-block px-4 py-1.5 bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-blue-300 rounded-full text-sm font-medium border border-blue-500/30">
+                <span className="inline-block px-2 sm:px-3 xl:px-4 py-1 sm:py-1 xl:py-1.5 bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-blue-300 rounded-full text-xs sm:text-xs xl:text-sm font-medium border border-blue-500/30">
                   {chat.category}
                 </span>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg"
+              className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 xl:p-2 hover:bg-gray-700/50 rounded-lg flex-shrink-0"
               aria-label="Zamknij"
             >
               <svg
-                className="w-6 h-6"
+                className="w-5 h-5 sm:w-5 xl:w-6 xl:h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -127,10 +129,10 @@ export default function ChatModal({
           </div>
 
           {/* Tapy */}
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-1.5 xl:gap-2">
             <button
               onClick={() => setActiveTab("content")}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
+              className={`px-3 sm:px-4 xl:px-6 py-2 sm:py-2 xl:py-2.5 rounded-lg font-medium transition-all text-xs sm:text-sm xl:text-base ${
                 activeTab === "content"
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
                   : "bg-gray-700/50 text-gray-300 hover:bg-gray-700"
@@ -140,7 +142,7 @@ export default function ChatModal({
             </button>
             <button
               onClick={() => setActiveTab("analysis")}
-              className={`px-6 py-2.5 rounded-lg font-medium transition-all ${
+              className={`px-3 sm:px-4 xl:px-6 py-2 sm:py-2 xl:py-2.5 rounded-lg font-medium transition-all text-xs sm:text-sm xl:text-base ${
                 activeTab === "analysis"
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
                   : "bg-gray-700/50 text-gray-300 hover:bg-gray-700"
@@ -153,12 +155,12 @@ export default function ChatModal({
 
         {/* Content area */}
         <div className="flex-1 overflow-hidden flex">
-          {/* TAB: Treść konwersacji - ZMODYFIKOWANA SEKCJA */}
+          {/* TAB: Treść konwersacji - ZOPTYMALIZOWANA DLA MOBILE */}
           {activeTab === "content" && (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Scrollable conversation area */}
-              <div className="flex-1 overflow-y-auto p-8">
-                <div className="max-w-4xl mx-auto space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-8">
+                <div className="max-w-4xl mx-auto space-y-2 sm:space-y-4">
                   {chat.conversation.map((exchange, index) => {
                     const isExpanded = expandedItems.has(index);
                     const questionText = isExpanded
@@ -171,31 +173,31 @@ export default function ChatModal({
                     return (
                       <div
                         key={index}
-                        className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden hover:border-gray-600/50 transition-all"
+                        className="bg-gray-800/50 rounded-lg sm:rounded-xl border border-gray-700/50 overflow-hidden hover:border-gray-600/50 transition-all"
                       >
                         {/* Pytanie */}
                         <div
-                          className="p-6 cursor-pointer hover:bg-gray-700/30 transition-colors"
+                          className="p-3 sm:p-6 cursor-pointer hover:bg-gray-700/30 transition-colors"
                           onClick={() => toggleItem(index)}
                         >
-                          <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                          <div className="flex items-start gap-2 sm:gap-4">
+                            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                               Q{index + 1}
                             </div>
-                            <div className="flex-1">
-                              <p className="text-white font-medium leading-relaxed">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium leading-relaxed text-sm sm:text-base">
                                 {questionText}
                               </p>
                               {!isExpanded &&
                                 exchange.question.length > 100 && (
-                                  <button className="text-blue-400 text-sm mt-2 hover:text-blue-300 transition-colors">
+                                  <button className="text-blue-400 text-xs sm:text-sm mt-1 sm:mt-2 hover:text-blue-300 transition-colors">
                                     Rozwiń pytanie →
                                   </button>
                                 )}
                             </div>
                             <div className="flex-shrink-0">
                               <svg
-                                className={`w-5 h-5 text-gray-400 transition-transform ${
+                                className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-400 transition-transform ${
                                   isExpanded ? "rotate-180" : ""
                                 }`}
                                 fill="none"
@@ -216,21 +218,21 @@ export default function ChatModal({
                         {/* Odpowiedź */}
                         <div
                           className={`border-t border-gray-700/50 bg-gray-900/30 transition-all ${
-                            isExpanded ? "p-6" : "p-4"
+                            isExpanded ? "p-3 sm:p-6" : "p-2 sm:p-4"
                           }`}
                         >
-                          <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                          <div className="flex items-start gap-2 sm:gap-4">
+                            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm">
                               A
                             </div>
-                            <div className="flex-1">
-                              <p className="text-gray-300 leading-relaxed whitespace-pre-line text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-gray-300 leading-relaxed whitespace-pre-line text-xs sm:text-sm">
                                 {answerText}
                               </p>
                               {!isExpanded && exchange.answer.length > 200 && (
                                 <button
                                   onClick={() => toggleItem(index)}
-                                  className="text-purple-400 text-sm mt-3 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+                                  className="text-purple-400 text-xs sm:text-sm mt-2 sm:mt-3 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
                                 >
                                   Czytaj pełną odpowiedź →
                                 </button>
@@ -245,26 +247,30 @@ export default function ChatModal({
               </div>
 
               {/* Fixed statistics at bottom */}
-              <div className="border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-sm p-6">
+              <div className="border-t border-gray-700/50 bg-gray-900/80 backdrop-blur-sm p-3 sm:p-6">
                 <div className="max-w-4xl mx-auto">
-                  <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+                  <h4 className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2 sm:mb-4">
                     Szybkie statystyki
                   </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                      <div className="text-2xl font-bold text-blue-400">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                    <div className="bg-gray-800/50 rounded-lg p-2 sm:p-4 border border-gray-700/50">
+                      <div className="text-xl sm:text-2xl font-bold text-blue-400">
                         {chat.conversation.length}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">Wymian</div>
+                      <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
+                        Wymian
+                      </div>
                     </div>
-                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                      <div className="text-2xl font-bold text-purple-400">
+                    <div className="bg-gray-800/50 rounded-lg p-2 sm:p-4 border border-gray-700/50">
+                      <div className="text-xl sm:text-2xl font-bold text-purple-400">
                         {chat.skills.length}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">Technik</div>
+                      <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
+                        Technik
+                      </div>
                     </div>
-                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                      <div className="text-2xl font-bold text-green-400">
+                    <div className="bg-gray-800/50 rounded-lg p-2 sm:p-4 border border-gray-700/50">
+                      <div className="text-xl sm:text-2xl font-bold text-green-400">
                         {chat.metrics
                           ? (
                               (chat.metrics.clarity +
@@ -275,15 +281,15 @@ export default function ChatModal({
                             ).toFixed(1)
                           : "N/A"}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                         Średnia ocena
                       </div>
                     </div>
-                    <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
-                      <div className="text-2xl font-bold text-orange-400">
+                    <div className="bg-gray-800/50 rounded-lg p-2 sm:p-4 border border-gray-700/50">
+                      <div className="text-xl sm:text-2xl font-bold text-orange-400">
                         {chat.relatedChats.length}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                         Powiązane
                       </div>
                     </div>
