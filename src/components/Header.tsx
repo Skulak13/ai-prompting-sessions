@@ -230,7 +230,7 @@ export default function Header({
   return (
     <header
       ref={headerRef}
-      className="bg-gray-800 border-b border-gray-700 px-4 py-1 md:px-8 md:py-6 relative"
+      className="bg-gray-800 border-b border-gray-700 px-4 py-1 md:px-8 lg:py-6 relative"
     >
       {/* XL+ layout (unchanged) */}
       <div className="hidden xl:flex items-start justify-between gap-6">
@@ -349,7 +349,7 @@ export default function Header({
           <img
             src={avatar}
             alt="Author"
-            className="w-11 h-11 md:w-14 md:h-14 rounded-full border-2 border-blue-500"
+            className="w-11 h-11 lg:w-14 lg:h-14 rounded-full border-2 border-blue-500"
           />
           <p className="text-gray-300 text-xs sm:text-sm font-medium whitespace-nowrap leading-none tracking-tight mt-1">
             Tomek Skulski

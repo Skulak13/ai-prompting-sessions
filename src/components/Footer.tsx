@@ -1,6 +1,6 @@
 export default function Footer() {
   return (
-    <footer className="bg-gray-800 border-t border-gray-700 px-8 py-1 md:py-4">
+    <footer className="bg-gray-800 border-t border-gray-700 px-8 py-1 lg:py-4">
       <div className="flex items-center justify-center gap-6">
         <a
           href="https://www.linkedin.com/in/tomasz-skulski/"
