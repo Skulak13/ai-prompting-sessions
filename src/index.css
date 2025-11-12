@@ -12,3 +12,9 @@
     height: 100vh;
   }
 }
+
+@custom-variant landscape-low {
+  @media (orientation: landscape) and (max-height: 500px) {
+    @slot;
+  }
+}
