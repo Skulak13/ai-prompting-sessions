@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { Category, RatingFilter } from "../types";
 import avatar from "../assets/images/skulfancy.webp";
@@ -34,7 +34,7 @@ const categoryLabels: Record<Category, string> = {
 
 const ratings: Array<Exclude<RatingFilter, null>> = [4, 4.5, 4.8, 5];
 
-const ratingLabels: Record<number, string> = {
+const ratingLabels: Record<Exclude<RatingFilter, null>, string> = {
   4: "★ 4.0+",
   4.5: "★ 4.5",
   4.8: "★ 4.8",
@@ -56,30 +56,36 @@ export default function Header({
   const headerRef = useRef<HTMLElement | null>(null);
   const portalRef = useRef<HTMLDivElement | null>(null);
 
-  const toggleCategory = (category: Category) => {
-    const allState =
-      activeCategories.length === 0 ||
-      activeCategories.length === categories.length;
+  const toggleCategory = useCallback(
+    (category: Category) => {
+      const allState =
+        activeCategories.length === 0 ||
+        activeCategories.length === categories.length;
 
-    if (allState) {
-      setActiveCategories([category]);
-      return;
-    }
+      if (allState) {
+        setActiveCategories([category]);
+        return;
+      }
 
-    if (activeCategories.includes(category)) {
-      setActiveCategories(activeCategories.filter((c) => c !== category));
-    } else {
-      setActiveCategories([...activeCategories, category]);
-    }
-  };
+      if (activeCategories.includes(category)) {
+        setActiveCategories(activeCategories.filter((c) => c !== category));
+      } else {
+        setActiveCategories([...activeCategories, category]);
+      }
+    },
+    [activeCategories, setActiveCategories]
+  );
 
-  const toggleRating = (rating: Exclude<RatingFilter, null>) => {
-    if (activeRatings.includes(rating)) {
-      setActiveRatings(activeRatings.filter((r) => r !== rating));
-    } else {
-      setActiveRatings([...activeRatings, rating]);
-    }
-  };
+  const toggleRating = useCallback(
+    (rating: Exclude<RatingFilter, null>) => {
+      if (activeRatings.includes(rating)) {
+        setActiveRatings(activeRatings.filter((r) => r !== rating));
+      } else {
+        setActiveRatings([...activeRatings, rating]);
+      }
+    },
+    [activeRatings, setActiveRatings]
+  );
 
   const isCategoryActive = (category: Category) =>
     activeCategories.length === 0 || activeCategories.includes(category);
@@ -93,22 +99,17 @@ export default function Header({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     setMenuRect({
-      top: rect.bottom + window.scrollY, // fixed relative to document
-      left: rect.left + window.scrollX,
+      top: rect.bottom,
+      left: rect.left,
       width: rect.width,
     });
   };
 
   useEffect(() => {
-    if (menuOpen) {
-      computeMenuRect();
-    }
-    const onResize = () => {
-      if (menuOpen) computeMenuRect();
-    };
-    const onScroll = () => {
-      if (menuOpen) computeMenuRect();
-    };
+    if (!menuOpen) return;
+
+    const onResize = () => computeMenuRect();
+    const onScroll = () => computeMenuRect();
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -120,15 +121,15 @@ export default function Header({
 
   // close on Escape and close on click outside portal
   useEffect(() => {
+    if (!menuOpen) return;
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
     const onDocClick = (e: MouseEvent) => {
-      if (!menuOpen) return;
       const target = e.target as Node;
-      if (!portalRef.current) return;
       if (
-        !portalRef.current.contains(target) &&
+        !portalRef.current?.contains(target) &&
         !headerRef.current?.contains(target)
       ) {
         setMenuOpen(false);
@@ -141,6 +142,9 @@ export default function Header({
       document.removeEventListener("mousedown", onDocClick);
     };
   }, [menuOpen]);
+
+  const buttonBase =
+    "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200";
 
   // render overlay (portal) content
   const MenuPortal = () => {
@@ -160,6 +164,7 @@ export default function Header({
         style={style}
         className="xl:hidden"
         aria-hidden={!menuOpen}
+        role="menu"
       >
         <div className="mt-0 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-2xl">
           <div className="flex flex-wrap justify-center gap-2 mb-3">
@@ -167,7 +172,7 @@ export default function Header({
               <button
                 key={category}
                 onClick={() => toggleCategory(category)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`${buttonBase} ${
                   isCategoryActive(category)
                     ? "bg-blue-600 text-white"
                     : "bg-gray-700 text-gray-300 hover:bg-gray-600"
@@ -183,7 +188,7 @@ export default function Header({
               <button
                 key={rating}
                 onClick={() => toggleRating(rating)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`${buttonBase} ${
                   isRatingActive(rating)
                     ? "bg-amber-600 text-white"
                     : "bg-gray-700 text-amber-300 hover:bg-gray-600"
@@ -214,6 +219,8 @@ export default function Header({
                 value={speed}
                 onChange={(e) => setSpeed(parseFloat(e.target.value))}
                 className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                aria-label="Prędkość animacji"
+                aria-valuenow={speed}
               />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Wolno</span>
@@ -238,7 +245,7 @@ export default function Header({
           <img
             src={avatar}
             alt="Author's photo"
-            className="w-22 h-22 mb-2 rounded-full border-2 border-blue-500"
+            className="w-24 h-24 mb-2 rounded-full border-2 border-blue-500"
           />
           <p className="text-gray-300 text-sm font-medium whitespace-nowrap leading-none">
             Tomek Skulski
@@ -261,7 +268,7 @@ export default function Header({
                 <button
                   key={category}
                   onClick={() => toggleCategory(category)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`${buttonBase} ${
                     isCategoryActive(category)
                       ? "bg-blue-600 text-white shadow-lg shadow-blue-500/50"
                       : "bg-gray-700 text-gray-300 hover:bg-gray-600"
@@ -279,7 +286,7 @@ export default function Header({
                 <button
                   key={rating}
                   onClick={() => toggleRating(rating)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`${buttonBase} ${
                     isRatingActive(rating)
                       ? "bg-amber-600 text-white shadow-lg shadow-amber-500/50"
                       : "bg-gray-700 text-amber-300 hover:bg-gray-600"
@@ -334,6 +341,8 @@ export default function Header({
               value={speed}
               onChange={(e) => setSpeed(parseFloat(e.target.value))}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              aria-label="Prędkość animacji"
+              aria-valuenow={speed}
             />
             <div className="flex justify-between text-xs text-gray-500">
               <span>Wolno</span>
@@ -368,13 +377,10 @@ export default function Header({
         <div className="flex items-center">
           <button
             onClick={() => {
-              // toggle and compute position on open
               setMenuOpen((s) => {
-                const next = !s;
-                if (!next) return false;
-                // if opening, compute position next tick
-                setTimeout(() => computeMenuRect(), 0);
-                return next;
+                if (s) return false; // closing, no need to compute
+                computeMenuRect(); // compute sync before opening
+                return true;
               });
             }}
             className="p-2 rounded-md hover:bg-gray-700 text-gray-200 transition bg-gray-700/0"
@@ -406,7 +412,7 @@ export default function Header({
       </div>
 
       {/* Render portal when open so the menu overlays the canvas and doesn't affect layout */}
-      {menuOpen && <MenuPortal />}
+      {menuOpen && window.innerWidth < 1280 && <MenuPortal />}
     </header>
   );
 }
