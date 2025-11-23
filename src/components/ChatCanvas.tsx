@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type { Chat } from "../types";
 
 interface Circle {
@@ -41,159 +41,155 @@ export default function ChatCanvas({
 
   const [RADIUS, setRADIUS] = useState(getRadius());
 
-  // Stałe fizyki zależne od radiusa
-  const REPULSION_DISTANCE = RADIUS * 2.2;
-  const WALL_REPULSION_DISTANCE = RADIUS * 1.5;
-  const CIRCLE_REPULSION_STRENGTH = 0.5;
-  const WALL_REPULSION_STRENGTH = 1.0;
-  const DAMPING = 0.97;
-
-  // Nasłuchuj zmian rozmiaru okna
-  useEffect(() => {
-    const handleResize = () => {
-      const newRadius = getRadius();
-      if (newRadius !== RADIUS) {
-        setRADIUS(newRadius);
-        // Zresetuj koła z nowym radiusem
-        circlesRef.current = [];
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [RADIUS]);
+  // Stałe fizyki zależne od radiusa – cache'owane za pomocą useMemo
+  const REPULSION_DISTANCE = useMemo(() => RADIUS * 2.2, [RADIUS]);
+  const WALL_REPULSION_DISTANCE = useMemo(() => RADIUS * 1.5, [RADIUS]);
+  const CIRCLE_REPULSION_STRENGTH = useMemo(() => 0.5, []);
+  const WALL_REPULSION_STRENGTH = useMemo(() => 1.0, []);
+  const DAMPING = useMemo(() => 0.97, []);
 
   // Normalizacja prędkości
-  const normalizeVelocity = (circle: Circle, targetSpeed: number) => {
-    const currentSpeed = Math.sqrt(
-      circle.vx * circle.vx + circle.vy * circle.vy
-    );
-    if (currentSpeed > 0.01) {
-      circle.vx = (circle.vx / currentSpeed) * targetSpeed;
-      circle.vy = (circle.vy / currentSpeed) * targetSpeed;
-    } else if (targetSpeed > 0) {
-      const angle = Math.random() * Math.PI * 2;
-      circle.vx = Math.cos(angle) * targetSpeed;
-      circle.vy = Math.sin(angle) * targetSpeed;
-    }
-  };
+  const normalizeVelocity = useCallback(
+    (circle: Circle, targetSpeed: number) => {
+      const currentSpeed = Math.sqrt(
+        circle.vx * circle.vx + circle.vy * circle.vy
+      );
+      if (currentSpeed > 0.01) {
+        circle.vx = (circle.vx / currentSpeed) * targetSpeed;
+        circle.vy = (circle.vy / currentSpeed) * targetSpeed;
+      } else if (targetSpeed > 0) {
+        const angle = Math.random() * Math.PI * 2;
+        circle.vx = Math.cos(angle) * targetSpeed;
+        circle.vy = Math.sin(angle) * targetSpeed;
+      }
+    },
+    []
+  );
 
   // Sprawdzanie kolizji przy inicjalizacji
-  const checkCircleCollision = (c1: Circle, c2: Circle): boolean => {
-    const dx = c2.x - c1.x;
-    const dy = c2.y - c1.y;
-    const distanceSq = dx * dx + dy * dy;
-    const minDistance = c1.radius + c2.radius;
-    const buffer = 5;
-    return distanceSq < (minDistance + buffer) * (minDistance + buffer);
-  };
+  const checkCircleCollision = useCallback(
+    (c1: Circle, c2: Circle): boolean => {
+      const dx = c2.x - c1.x;
+      const dy = c2.y - c1.y;
+      const distanceSq = dx * dx + dy * dy;
+      const minDistance = c1.radius + c2.radius;
+      const buffer = 5;
+      return distanceSq < (minDistance + buffer) * (minDistance + buffer);
+    },
+    []
+  );
 
   // Inicjalizacja koła
-  const initializeCircle = (
-    chat: Chat,
-    width: number,
-    height: number,
-    existingCircles: Circle[]
-  ): Circle => {
-    const maxAttempts = 100;
-    let attempt = 0;
-    let circle: Circle;
+  const initializeCircle = useCallback(
+    (
+      chat: Chat,
+      width: number,
+      height: number,
+      existingCircles: Circle[]
+    ): Circle => {
+      const maxAttempts = 100;
+      let attempt = 0;
+      let circle: Circle;
 
-    do {
-      const angle = Math.random() * Math.PI * 2;
-      circle = {
-        id: chat.id,
-        x: RADIUS + Math.random() * (width - RADIUS * 2),
-        y: RADIUS + Math.random() * (height - RADIUS * 2),
-        vx: Math.cos(angle) * BASE_SPEED,
-        vy: Math.sin(angle) * BASE_SPEED,
-        radius: RADIUS,
-        chat,
-      };
+      do {
+        const angle = Math.random() * Math.PI * 2;
+        circle = {
+          id: chat.id,
+          x: RADIUS + Math.random() * (width - RADIUS * 2),
+          y: RADIUS + Math.random() * (height - RADIUS * 2),
+          vx: Math.cos(angle) * BASE_SPEED,
+          vy: Math.sin(angle) * BASE_SPEED,
+          radius: RADIUS,
+          chat,
+        };
 
-      const hasCollision = existingCircles.some((existing) =>
-        checkCircleCollision(circle, existing)
-      );
+        const hasCollision = existingCircles.some((existing) =>
+          checkCircleCollision(circle, existing)
+        );
 
-      if (!hasCollision) break;
-      attempt++;
-    } while (attempt < maxAttempts);
+        if (!hasCollision) break;
+        attempt++;
+      } while (attempt < maxAttempts);
 
-    return circle;
-  };
+      return circle;
+    },
+    [RADIUS, checkCircleCollision]
+  );
 
   // Rysowanie koła z responsywnym fontem
-  const drawCircle = (
-    ctx: CanvasRenderingContext2D,
-    circle: Circle,
-    isHovered: boolean
-  ) => {
-    const { x, y, radius, chat } = circle;
+  const drawCircle = useCallback(
+    (ctx: CanvasRenderingContext2D, circle: Circle, isHovered: boolean) => {
+      const { x, y, radius, chat } = circle;
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 4;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 15;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 4;
 
-    ctx.fillStyle = isHovered
-      ? "rgba(37, 99, 235, 0.3)"
-      : "rgba(31, 41, 55, 0.9)";
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = isHovered
+        ? "rgba(37, 99, 235, 0.3)"
+        : "rgba(31, 41, 55, 0.9)";
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.strokeStyle = isHovered
-      ? "rgba(96, 165, 250, 1)"
-      : "rgba(59, 130, 246, 0.5)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      ctx.strokeStyle = isHovered
+        ? "rgba(96, 165, 250, 1)"
+        : "rgba(59, 130, 246, 0.5)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
 
-    ctx.shadowColor = "transparent";
+      ctx.shadowColor = "transparent";
 
-    // Responsywny rozmiar emoji
-    const emojiFontSize = Math.floor(radius * 0.5);
-    ctx.font = `${emojiFontSize}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "white";
-    ctx.fillText(chat.emoji || "💬", x, y - radius * 0.2);
+      // Responsywny rozmiar emoji
+      const emojiFontSize = Math.floor(radius * 0.5);
+      ctx.font = `${emojiFontSize}px Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "white";
+      ctx.fillText(chat.emoji || "💬", x, y - radius * 0.2);
 
-    // Responsywny rozmiar tytułu
-    const titleFontSize = Math.floor(radius * 0.2);
-    ctx.font = `${titleFontSize}px Arial`;
-    ctx.fillStyle = "white";
-    const words = chat.title.split(" ");
-    let line = "";
-    let lineY = y + radius * 0.3;
-    const maxWidth = radius * 1.6;
-    const lineHeight = titleFontSize * 1.2;
+      // Responsywny rozmiar tytułu
+      const titleFontSize = Math.floor(radius * 0.2);
+      ctx.font = `${titleFontSize}px Arial`;
+      ctx.fillStyle = "white";
+      const words = chat.title.split(" ");
+      let line = "";
+      let lineY = y + radius * 0.3;
+      const maxWidth = radius * 1.6;
+      const lineHeight = titleFontSize * 1.2;
 
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + words[i] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && i > 0) {
-        ctx.fillText(line.trim(), x, lineY);
-        line = words[i] + " ";
-        lineY += lineHeight;
-      } else {
-        line = testLine;
+      for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + " ";
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && i > 0) {
+          ctx.fillText(line.trim(), x, lineY);
+          line = words[i] + " ";
+          lineY += lineHeight;
+        } else {
+          line = testLine;
+        }
       }
-    }
-    ctx.fillText(line.trim(), x, lineY);
-  };
+      ctx.fillText(line.trim(), x, lineY);
+    },
+    []
+  );
 
   // Znajdź koło pod kursorem
-  const getCircleAtPosition = (x: number, y: number): Circle | null => {
-    for (let i = circlesRef.current.length - 1; i >= 0; i--) {
-      const circle = circlesRef.current[i];
-      const dx = x - circle.x;
-      const dy = y - circle.y;
-      if (dx * dx + dy * dy <= circle.radius * circle.radius) {
-        return circle;
+  const getCircleAtPosition = useCallback(
+    (x: number, y: number): Circle | null => {
+      for (let i = circlesRef.current.length - 1; i >= 0; i--) {
+        const circle = circlesRef.current[i];
+        const dx = x - circle.x;
+        const dy = y - circle.y;
+        if (dx * dx + dy * dy <= circle.radius * circle.radius) {
+          return circle;
+        }
       }
-    }
-    return null;
-  };
+      return null;
+    },
+    []
+  );
 
   // Obsługa kliknięcia i najechania
   useEffect(() => {
@@ -227,14 +223,23 @@ export default function ChatCanvas({
       canvas.removeEventListener("click", handleClick);
       canvas.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [onChatClick]);
+  }, [onChatClick, getCircleAtPosition]);
 
-  // Resize canvas
+  // Połączony effect dla resize (obsługuje RADIUS i canvas)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const resizeCanvas = () => {
+    const handleResize = () => {
+      // Logika dla RADIUS
+      const newRadius = getRadius();
+      if (newRadius !== RADIUS) {
+        setRADIUS(newRadius);
+        // Zresetuj koła z nowym radiusem
+        circlesRef.current = [];
+      }
+
+      // Logika dla canvas
       const container = canvas.parentElement;
       if (!container) return;
 
@@ -257,9 +262,9 @@ export default function ChatCanvas({
       });
     };
 
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-    return () => window.removeEventListener("resize", resizeCanvas);
+    handleResize(); // Inicjalne wywołanie
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [RADIUS]);
 
   // Inicjalizacja kół
@@ -289,9 +294,9 @@ export default function ChatCanvas({
     });
 
     circlesRef.current = newCircles;
-  }, [chats, RADIUS]);
+  }, [chats, RADIUS, initializeCircle]);
 
-  // Główna pętla animacji (bez zmian w logice fizyki)
+  // Główna pętla animacji
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -401,7 +406,18 @@ export default function ChatCanvas({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [speed, isPaused, RADIUS, REPULSION_DISTANCE, WALL_REPULSION_DISTANCE]);
+  }, [
+    speed,
+    isPaused,
+    RADIUS,
+    REPULSION_DISTANCE,
+    WALL_REPULSION_DISTANCE,
+    CIRCLE_REPULSION_STRENGTH,
+    WALL_REPULSION_STRENGTH,
+    DAMPING,
+    normalizeVelocity,
+    drawCircle,
+  ]);
 
   return (
     <div className="flex-1 relative bg-gray-900 overflow-hidden">
