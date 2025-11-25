@@ -425,6 +425,7 @@ export default function ChatCanvas({
         ref={canvasRef}
         className="w-full h-full"
         style={{ display: "block" }}
+        tabIndex={0}
       />
     </div>
   );

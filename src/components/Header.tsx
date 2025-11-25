@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
-import type { Category, RatingFilter } from "../types";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
 import avatar from "../assets/images/skulfancy.webp";
+import type { Category, RatingFilter } from "../types";
 
 interface HeaderProps {
   activeCategories: Category[];
@@ -54,8 +54,42 @@ export default function Header({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuRect, setMenuRect] = useState({ top: 0, left: 0, width: 0 });
   const headerRef = useRef<HTMLElement | null>(null);
-  const portalRef = useRef<HTMLDivElement | null>(null);
 
+  // focus refs
+  const firstMenuItemRef = useRef<HTMLButtonElement | HTMLInputElement | null>(
+    null
+  );
+  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
+
+  const buttonBase =
+    "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200";
+
+  const computeMenuRect = useCallback(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setMenuRect({
+      top: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onResize = () => computeMenuRect();
+    const onScroll = () => computeMenuRect();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [menuOpen, computeMenuRect]);
+
+  // toggle functions (no focus manipulations here — letting native focus remain)
   const toggleCategory = useCallback(
     (category: Category) => {
       const allState =
@@ -93,146 +127,13 @@ export default function Header({
   const isRatingActive = (rating: Exclude<RatingFilter, null>) =>
     activeRatings.includes(rating);
 
-  // compute menu position under header (so it overlays the canvas)
-  const computeMenuRect = () => {
-    const el = headerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setMenuRect({
-      top: rect.bottom,
-      left: rect.left,
-      width: rect.width,
-    });
+  // Ensure computeMenuRect runs before opening so Dialog.Panel can be positioned.
+  const openMenu = () => {
+    computeMenuRect();
+    setMenuOpen(true);
   };
 
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const onResize = () => computeMenuRect();
-    const onScroll = () => computeMenuRect();
-    window.addEventListener("resize", onResize);
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [menuOpen]);
-
-  // close on Escape and close on click outside portal
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    const onDocClick = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        !portalRef.current?.contains(target) &&
-        !headerRef.current?.contains(target)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDocClick);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDocClick);
-    };
-  }, [menuOpen]);
-
-  const buttonBase =
-    "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200";
-
-  // render overlay (portal) content
-  const MenuPortal = () => {
-    // don't render on xl+ (menu isn't used there)
-    // but we still allow portal to exist — Tailwind classes hide it.
-    const style: React.CSSProperties = {
-      position: "fixed",
-      top: menuRect.top,
-      left: menuRect.left,
-      width: menuRect.width,
-      zIndex: 70,
-    };
-
-    return createPortal(
-      <div
-        ref={portalRef}
-        style={style}
-        className="xl:hidden"
-        aria-hidden={!menuOpen}
-        role="menu"
-      >
-        <div className="mt-0 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-2xl">
-          <div className="flex flex-wrap justify-center gap-2 mb-3">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => toggleCategory(category)}
-                className={`${buttonBase} ${
-                  isCategoryActive(category)
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                }`}
-              >
-                {categoryLabels[category]}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-2 mb-4">
-            {ratings.map((rating) => (
-              <button
-                key={rating}
-                onClick={() => toggleRating(rating)}
-                className={`${buttonBase} ${
-                  isRatingActive(rating)
-                    ? "bg-amber-600 text-white"
-                    : "bg-gray-700 text-amber-300 hover:bg-gray-600"
-                }`}
-              >
-                {ratingLabels[rating]}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-col items-center gap-3">
-            <button
-              onClick={() => setIsPaused(!isPaused)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full max-w-[220px]"
-            >
-              {isPaused ? "▶ Wznów" : "⏸ Pauza"}
-            </button>
-
-            <div className="w-full max-w-[250px]">
-              <label className="text-gray-400 text-xs font-medium">
-                Prędkość: {speed.toFixed(1)}x
-              </label>
-              <input
-                type="range"
-                min="0.1"
-                max="3"
-                step="0.1"
-                value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                aria-label="Prędkość animacji"
-                aria-valuenow={speed}
-              />
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Wolno</span>
-                <span>Szybko</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  };
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <header
@@ -376,15 +277,20 @@ export default function Header({
 
         <div className="flex items-center">
           <button
+            ref={hamburgerRef}
             onClick={() => {
-              setMenuOpen((s) => {
-                if (s) return false; // closing, no need to compute
-                computeMenuRect(); // compute sync before opening
-                return true;
-              });
+              if (menuOpen) {
+                // close
+                setMenuOpen(false);
+              } else {
+                // compute pos synchronously then open
+                openMenu();
+              }
             }}
             className="p-2 rounded-md hover:bg-gray-700 text-gray-200 transition bg-gray-700/0"
-            aria-label="Menu"
+            aria-label={menuOpen ? "Zamknij menu" : "Otwórz menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
           >
             <svg
               className="w-6 h-6"
@@ -411,8 +317,137 @@ export default function Header({
         </div>
       </div>
 
-      {/* Render portal when open so the menu overlays the canvas and doesn't affect layout */}
-      {menuOpen && window.innerWidth < 1280 && <MenuPortal />}
+      {/* Mobile menu using Headless UI Dialog (focus trap + a11y) */}
+      <Transition show={menuOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="fixed inset-0 z-50 xl:hidden"
+          open={menuOpen}
+          onClose={closeMenu}
+          initialFocus={firstMenuItemRef}
+        >
+          {/* Overlay now starts below the header (so header is not dimmed) */}
+          <div
+            className="fixed left-0 right-0 bg-black/40"
+            aria-hidden="true"
+            style={{
+              top: menuRect.top,
+              height: `calc(100% - ${menuRect.top}px)`,
+            }}
+          />
+
+          {/* Panel positioned under header using computed rect */}
+          <div
+            className="fixed left-0 top-0 w-full pointer-events-none"
+            aria-hidden="true"
+          >
+            {/* spacer to let Panel be placed exactly at menuRect.top */}
+            <div style={{ height: menuRect.top }} />
+          </div>
+
+          <div
+            className="fixed z-50 left-0"
+            style={{
+              top: menuRect.top,
+              left: menuRect.left,
+              width: menuRect.width || "100%",
+              pointerEvents: "auto",
+            }}
+          >
+            <Dialog.Panel
+              id="mobile-menu"
+              className="relative mt-0 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-2xl"
+            >
+              <div className="flex flex-wrap justify-center gap-2 mb-3 relative">
+                {categories.map((category, index) => (
+                  <button
+                    key={category}
+                    // set initial focus ref on first interactive element
+                    ref={(el) => {
+                      if (index === 0) firstMenuItemRef.current = el;
+                    }}
+                    onClick={() => {
+                      toggleCategory(category);
+                    }}
+                    className={`${buttonBase} ${
+                      isCategoryActive(category)
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    }`}
+                  >
+                    {categoryLabels[category]}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                {ratings.map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => {
+                      toggleRating(rating);
+                    }}
+                    className={`${buttonBase} ${
+                      isRatingActive(rating)
+                        ? "bg-amber-600 text-white"
+                        : "bg-gray-700 text-amber-300 hover:bg-gray-600"
+                    }`}
+                  >
+                    {ratingLabels[rating]}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col items-center gap-3">
+                <button
+                  onClick={() => setIsPaused(!isPaused)}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors w-full max-w-[220px]"
+                >
+                  {isPaused ? "▶ Wznów" : "⏸ Pauza"}
+                </button>
+
+                <div className="w-full max-w-[250px]">
+                  <label className="text-gray-400 text-xs font-medium">
+                    Prędkość: {speed.toFixed(1)}x
+                  </label>
+
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="3"
+                    step="0.1"
+                    value={speed}
+                    onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                    // stop propagation on pointer/mouse down so parent/dialog overlay doesn't interfere during drag
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    // keep accessible label/props
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    aria-label="Prędkość animacji"
+                    aria-valuenow={speed}
+                  />
+
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Wolno</span>
+                    <span>Szybko</span>
+                  </div>
+                </div>
+              </div>
+              {/* sr-only close button for keyboard/screen-reader users - invisible to mouse/touch users
+                  but focusable. Placed absolutely in the top-right corner of the panel (so it doesn't
+                  affect layout) and styled to match the other menu buttons when it becomes visible.
+                  It will only appear visually when focused (focus:not-sr-only). */}
+              <button
+                onClick={closeMenu}
+                aria-label="Zamknij menu"
+                className={`${buttonBase} focus:absolute focus:px-3 focus:py-1.5 right-4 top-4 sr-only focus:not-sr-only bg-red-900 text-white`}
+              >
+                Zamknij
+              </button>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
+      </Transition>
     </header>
   );
 }
