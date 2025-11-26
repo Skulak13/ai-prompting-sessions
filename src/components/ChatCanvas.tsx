@@ -29,17 +29,26 @@ export default function ChatCanvas({
   const animationRef = useRef<number | undefined>(undefined);
   const hoveredCircleRef = useRef<Circle | null>(null);
 
+  // Ref do przechowywania informacji o focusie (nie wywołuje re-rendera)
+  const hasFocusRef = useRef(false);
+
+  // Stan trybu "wewnątrz" (interaction) — tylko wtedy aktywna nawigacja strzałkami
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  // index zaznaczonego krążka (dla keyboard navigation) — używany tylko w interaction
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
   const BASE_SPEED = 1.25;
 
   // Dynamiczny radius w zależności od szerokości ekranu
-  const getRadius = () => {
+  const getRadius = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1200) return 60; // Desktop
     if (width >= 768) return 45; // Tablet
     return 35; // Mobile
-  };
+  }, []);
 
-  const [RADIUS, setRADIUS] = useState(getRadius());
+  const [RADIUS, setRADIUS] = useState(getRadius);
 
   // Stałe fizyki zależne od radiusa – cache'owane za pomocą useMemo
   const REPULSION_DISTANCE = useMemo(() => RADIUS * 2.2, [RADIUS]);
@@ -117,10 +126,17 @@ export default function ChatCanvas({
   );
 
   // Rysowanie koła z responsywnym fontem
+  // isSelected rysujemy tylko gdy isInteracting === true
   const drawCircle = useCallback(
-    (ctx: CanvasRenderingContext2D, circle: Circle, isHovered: boolean) => {
+    (
+      ctx: CanvasRenderingContext2D,
+      circle: Circle,
+      isHovered: boolean,
+      isSelected: boolean
+    ) => {
       const { x, y, radius, chat } = circle;
 
+      // Cień
       ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
       ctx.shadowBlur = 15;
       ctx.shadowOffsetX = 0;
@@ -133,15 +149,35 @@ export default function ChatCanvas({
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
 
+      // Stroke podstawowy
       ctx.strokeStyle = isHovered
         ? "rgba(96, 165, 250, 1)"
         : "rgba(59, 130, 246, 0.5)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
+      // Jeśli jest selected — dodatkowy pierścień / wyraźniejsza ramka
+      if (isSelected) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 6, 0, Math.PI * 2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.95)";
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.restore();
+
+        // wewnętrzny jaśniejszy stroke
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(147,197,253,0.95)"; // light blue
+        ctx.stroke();
+      }
+
       ctx.shadowColor = "transparent";
 
-      // Responsywny rozmiar emoji
+      // Emoji
       const emojiFontSize = Math.floor(radius * 0.5);
       ctx.font = `${emojiFontSize}px Arial`;
       ctx.textAlign = "center";
@@ -149,7 +185,7 @@ export default function ChatCanvas({
       ctx.fillStyle = "white";
       ctx.fillText(chat.emoji || "💬", x, y - radius * 0.2);
 
-      // Responsywny rozmiar tytułu
+      // Tytuł wieloliniowo
       const titleFontSize = Math.floor(radius * 0.2);
       ctx.font = `${titleFontSize}px Arial`;
       ctx.fillStyle = "white";
@@ -191,6 +227,11 @@ export default function ChatCanvas({
     []
   );
 
+  // Helper: znajdź index krążka po id
+  const findIndexById = useCallback((id: string) => {
+    return circlesRef.current.findIndex((c) => c.id === id);
+  }, []);
+
   // Obsługa kliknięcia i najechania
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -202,6 +243,9 @@ export default function ChatCanvas({
       const y = e.clientY - rect.top;
       const circle = getCircleAtPosition(x, y);
       if (circle) {
+        const idx = findIndexById(circle.id);
+        setSelectedIndex(idx >= 0 ? idx : null);
+        // kliknięcie myszką natychmiast otwiera modal (tak chcesz)
         onChatClick(circle.chat);
       }
     };
@@ -223,7 +267,7 @@ export default function ChatCanvas({
       canvas.removeEventListener("click", handleClick);
       canvas.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [onChatClick, getCircleAtPosition]);
+  }, [onChatClick, getCircleAtPosition, findIndexById]);
 
   // Połączony effect dla resize (obsługuje RADIUS i canvas)
   useEffect(() => {
@@ -265,7 +309,7 @@ export default function ChatCanvas({
     handleResize(); // Inicjalne wywołanie
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [RADIUS]);
+  }, [RADIUS, getRadius]);
 
   // Inicjalizacja kół
   useEffect(() => {
@@ -294,6 +338,14 @@ export default function ChatCanvas({
     });
 
     circlesRef.current = newCircles;
+
+    // Upewnij się, że selectedIndex jest w granicach
+    setSelectedIndex((prev) => {
+      if (newCircles.length === 0) return null;
+      if (prev === null) return 0;
+      if (prev >= newCircles.length) return newCircles.length - 1;
+      return prev;
+    });
   }, [chats, RADIUS, initializeCircle]);
 
   // Główna pętla animacji
@@ -392,8 +444,12 @@ export default function ChatCanvas({
         });
       }
 
-      circlesRef.current.forEach((circle) => {
-        drawCircle(ctx, circle, circle === hoveredCircleRef.current);
+      // Rysuj wszystkie, podając czy są hovered lub selected (selected tylko gdy isInteracting)
+      const selIdx = isInteracting ? selectedIndex : null;
+      circlesRef.current.forEach((circle, idx) => {
+        const isHovered = circle === hoveredCircleRef.current;
+        const isSelected = selIdx !== null && selIdx === idx;
+        drawCircle(ctx, circle, isHovered, isSelected);
       });
 
       animationRef.current = requestAnimationFrame(animate);
@@ -417,15 +473,142 @@ export default function ChatCanvas({
     DAMPING,
     normalizeVelocity,
     drawCircle,
+    selectedIndex,
+    isInteracting,
   ]);
 
+  // Keyboard navigation / wejście / wyjście
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onFocus = () => {
+      hasFocusRef.current = true;
+      // nie wchodzimy od razu w interaction — czekamy na Enter
+      const hovered = hoveredCircleRef.current;
+      if (hovered) {
+        const idx = findIndexById(hovered.id);
+        setSelectedIndex(idx >= 0 ? idx : 0);
+      } else {
+        setSelectedIndex((prev) => (prev === null ? 0 : prev));
+      }
+    };
+
+    const onBlur = () => {
+      hasFocusRef.current = false;
+      // jeśli blur nastąpi, opuszczamy tryb interaction
+      setIsInteracting(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // reagujemy tylko kiedy canvas ma focus
+      if (document.activeElement !== canvas) return;
+
+      const count = circlesRef.current.length;
+
+      // Jeśli nie jesteśmy w trybie interaction:
+      if (!isInteracting) {
+        if (e.key === "Enter") {
+          // wejście do środka
+          e.preventDefault();
+          setIsInteracting(true);
+          // jeżeli jest hover, ustaw jako selected, inaczej pierwszy
+          const hovered = hoveredCircleRef.current;
+          if (hovered) {
+            const idx = findIndexById(hovered.id);
+            setSelectedIndex(idx >= 0 ? idx : 0);
+          } else {
+            setSelectedIndex((prev) => (prev === null ? 0 : prev));
+          }
+        } else if (e.key === "Escape") {
+          // gdy nie w interaction, ESC -> blur (przejście dalej w porządku Tab)
+          canvas.blur();
+        }
+        return;
+      }
+
+      // Jeśli jesteśmy w trybie interaction:
+      if (count === 0) return;
+
+      const navKeys = [
+        "ArrowRight",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowUp",
+        "Home",
+        "End",
+      ];
+      if (
+        navKeys.includes(e.key) ||
+        e.key === "Enter" ||
+        e.key === " " ||
+        e.key === "Escape"
+      ) {
+        e.preventDefault();
+      }
+
+      // obsługa klawiszy w interaction
+      setSelectedIndex((prev) => {
+        let current = prev === null ? 0 : prev;
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          current = (current + 1) % count;
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          current = (current - 1 + count) % count;
+        } else if (e.key === "Home") {
+          current = 0;
+        } else if (e.key === "End") {
+          current = count - 1;
+        } else if (e.key === "Enter") {
+          const sel = circlesRef.current[current];
+          if (sel) {
+            onChatClick(sel.chat);
+          }
+        } else if (e.key === " ") {
+          const sel = circlesRef.current[current];
+          if (sel) {
+            onChatClick(sel.chat);
+          }
+        } else if (e.key === "Escape") {
+          // wyjście z interaction: usuwamy interaction i blur canvas => powrót do normalnej nawigacji
+          setIsInteracting(false);
+          canvas.blur();
+        }
+        return current;
+      });
+    };
+
+    canvas.addEventListener("focus", onFocus);
+    canvas.addEventListener("blur", onBlur);
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      canvas.removeEventListener("focus", onFocus);
+      canvas.removeEventListener("blur", onBlur);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isInteracting, findIndexById, onChatClick]);
+
+  // Render
   return (
     <div className="flex-1 relative bg-gray-900 overflow-hidden">
+      {/* instrukcja dla czytników (ukryta wizualnie) */}
+      <div id="chat-canvas-desc" className="sr-only">
+        Focus: naciśnij Enter, aby wejść do nawigacji po krążkach. Wewnątrz:
+        użyj strzałek aby się przełączać, Enter aby otworzyć, Escape aby wyjść.
+      </div>
+
       <canvas
         ref={canvasRef}
-        className="w-full h-full"
+        className={
+          // Tailwind utility: widoczny ring gdy element ma focus (focus-visible)
+          // style nie określa outline dla selected krążka — to robimy w canvasie
+          "w-full h-full focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+        }
         style={{ display: "block" }}
         tabIndex={0}
+        role="application"
+        aria-label="Interaktywny obszar czatów"
+        aria-describedby="chat-canvas-desc"
       />
     </div>
   );
