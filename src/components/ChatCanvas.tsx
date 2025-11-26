@@ -29,8 +29,9 @@ export default function ChatCanvas({
   const animationRef = useRef<number | undefined>(undefined);
   const hoveredCircleRef = useRef<Circle | null>(null);
 
-  // Ref do przechowywania informacji o focusie (nie wywołuje re-rendera)
   const hasFocusRef = useRef(false);
+
+  const lastInteractionKeyboardRef = useRef(true);
 
   // Stan trybu "wewnątrz" (interaction) — tylko wtedy aktywna nawigacja strzałkami
   const [isInteracting, setIsInteracting] = useState(false);
@@ -40,7 +41,6 @@ export default function ChatCanvas({
 
   const BASE_SPEED = 1.25;
 
-  // Dynamiczny radius w zależności od szerokości ekranu
   const getRadius = useCallback(() => {
     const width = window.innerWidth;
     if (width >= 1200) return 60; // Desktop
@@ -50,14 +50,12 @@ export default function ChatCanvas({
 
   const [RADIUS, setRADIUS] = useState(getRadius);
 
-  // Stałe fizyki zależne od radiusa – cache'owane za pomocą useMemo
   const REPULSION_DISTANCE = useMemo(() => RADIUS * 2.2, [RADIUS]);
   const WALL_REPULSION_DISTANCE = useMemo(() => RADIUS * 1.5, [RADIUS]);
   const CIRCLE_REPULSION_STRENGTH = useMemo(() => 0.5, []);
   const WALL_REPULSION_STRENGTH = useMemo(() => 1.0, []);
   const DAMPING = useMemo(() => 0.97, []);
 
-  // Normalizacja prędkości
   const normalizeVelocity = useCallback(
     (circle: Circle, targetSpeed: number) => {
       const currentSpeed = Math.sqrt(
@@ -75,7 +73,6 @@ export default function ChatCanvas({
     []
   );
 
-  // Sprawdzanie kolizji przy inicjalizacji
   const checkCircleCollision = useCallback(
     (c1: Circle, c2: Circle): boolean => {
       const dx = c2.x - c1.x;
@@ -444,13 +441,25 @@ export default function ChatCanvas({
         });
       }
 
-      // Rysuj wszystkie, podając czy są hovered lub selected (selected tylko gdy isInteracting)
       const selIdx = isInteracting ? selectedIndex : null;
       circlesRef.current.forEach((circle, idx) => {
         const isHovered = circle === hoveredCircleRef.current;
         const isSelected = selIdx !== null && selIdx === idx;
         drawCircle(ctx, circle, isHovered, isSelected);
       });
+
+      // Rysowanie wewnętrznej ramki focus, tylko dla klawiatury
+      if (hasFocusRef.current && lastInteractionKeyboardRef.current) {
+        ctx.save();
+        const ringWidth = 2; // szerokość linii
+        ctx.lineWidth = ringWidth;
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.95)";
+        ctx.setLineDash([6, 4]);
+        const inset = ringWidth / 2;
+        // strokeRect w obrębie widocznego obszaru (CSS px)
+        ctx.strokeRect(inset, inset, width - ringWidth, height - ringWidth);
+        ctx.restore();
+      }
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -476,6 +485,27 @@ export default function ChatCanvas({
     selectedIndex,
     isInteracting,
   ]);
+
+  // Śledzenie ostatniej interakcji (klawiatura/mysz)
+  useEffect(() => {
+    const onKeyDownGlobal = () => {
+      lastInteractionKeyboardRef.current = true;
+    };
+    const onPointerDownGlobal = () => {
+      lastInteractionKeyboardRef.current = false;
+    };
+
+    // używamy capture phase, żeby złapać zdarzenia jak najwcześniej
+    window.addEventListener("keydown", onKeyDownGlobal, true);
+    window.addEventListener("pointerdown", onPointerDownGlobal, true);
+    window.addEventListener("touchstart", onPointerDownGlobal, true);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDownGlobal, true);
+      window.removeEventListener("pointerdown", onPointerDownGlobal, true);
+      window.removeEventListener("touchstart", onPointerDownGlobal, true);
+    };
+  }, []);
 
   // Keyboard navigation / wejście / wyjście
   useEffect(() => {
@@ -588,7 +618,6 @@ export default function ChatCanvas({
     };
   }, [isInteracting, findIndexById, onChatClick]);
 
-  // Render
   return (
     <div className="flex-1 relative bg-gray-900 overflow-hidden">
       {/* instrukcja dla czytników (ukryta wizualnie) */}
@@ -599,11 +628,7 @@ export default function ChatCanvas({
 
       <canvas
         ref={canvasRef}
-        className={
-          // Tailwind utility: widoczny ring gdy element ma focus (focus-visible)
-          // style nie określa outline dla selected krążka — to robimy w canvasie
-          "w-full h-full focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-        }
+        className={"w-full h-full"}
         style={{ display: "block" }}
         tabIndex={0}
         role="application"

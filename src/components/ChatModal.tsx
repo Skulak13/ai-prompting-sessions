@@ -6,7 +6,7 @@ interface ChatModalProps {
   onClose: () => void;
   // Lista wszystkich chatów (przekazana z App) - potrzebna, aby znaleźć tytuły powiązanych chatów
   allChats: Chat[];
-  // Funkcja otwierająca powiązany chat po id (przekazana z App)
+  // Funkcja otwierająca powiązaną chat po id (przekazana z App)
   onOpenRelated: (id: string) => void;
 }
 
@@ -19,7 +19,6 @@ export default function ChatModal({
   const [activeTab, setActiveTab] = useState<"content" | "analysis">("content");
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
-  // Zamknij modal po naciśnięciu ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -30,13 +29,11 @@ export default function ChatModal({
   }, [onClose]);
 
   const toggleItem = (index: number) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(index)) {
-      newExpanded.delete(index);
-    } else {
-      newExpanded.add(index);
-    }
-    setExpandedItems(newExpanded);
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(index)) next.add(index); // delete zwraca false jeśli nie było -> wtedy dodaj
+      return next;
+    });
   };
 
   const truncateText = (text: string, maxLength: number = 150) => {
@@ -45,7 +42,7 @@ export default function ChatModal({
   };
 
   const SkillBadge = ({ skill }: { skill: string }) => (
-    <span className="px-3 py-1.5 bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 rounded-lg text-sm border border-blue-400/30 hover:border-blue-400/60 transition-all hover:scale-105 cursor-default shadow-lg">
+    <span className="px-3 py-1.5 bg-linear-to-r from-blue-500/20 to-purple-500/20 text-blue-300 rounded-lg text-sm border border-blue-400/30 hover:border-blue-400/60 transition-all hover:scale-105 cursor-default shadow-lg">
       {skill}
     </span>
   );
@@ -68,7 +65,7 @@ export default function ChatModal({
       </div>
       <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
+          className="h-full bg-linear-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
           style={{ width: `${(value / max) * 100}%` }}
         />
       </div>
@@ -77,7 +74,7 @@ export default function ChatModal({
 
   const ListItem = ({ icon, text }: { icon: string; text: string }) => (
     <li className="flex items-start gap-3 text-gray-300 text-sm leading-relaxed">
-      <span className="text-lg mt-0.5 flex-shrink-0">{icon}</span>
+      <span className="text-lg mt-0.5 shrink-0">{icon}</span>
       <span>{text}</span>
     </li>
   );
@@ -88,7 +85,7 @@ export default function ChatModal({
       onClick={onClose}
     >
       <div
-        className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border border-gray-700/50 landscape-low:max-h-[100vh] landscape-low:rounded-lg"
+        className="bg-linear-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border border-gray-700/50 landscape-low:max-h-[100vh] landscape-low:rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header z tabami */}
@@ -102,14 +99,14 @@ export default function ChatModal({
                 <h2 className="text-xl sm:text-2xl xl:text-3xl font-bold text-white mb-1 sm:mb-1.5 xl:mb-2 landscape-low:text-lg landscape-low:mb-0.5">
                   {chat.title}
                 </h2>
-                <span className="inline-block px-2 sm:px-3 xl:px-4 py-1 sm:py-1 xl:py-1.5 bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-blue-300 rounded-full text-xs sm:text-xs xl:text-sm font-medium border border-blue-500/30 landscape-low:px-1 landscape-low:py-0.5 landscape-low:text-[10px]">
+                <span className="inline-block px-2 sm:px-3 xl:px-4 py-1 sm:py-1 xl:py-1.5 bg-linear-to-r from-blue-600/30 to-purple-600/30 text-blue-300 rounded-full text-xs sm:text-xs xl:text-sm font-medium border border-blue-500/30 landscape-low:px-1 landscape-low:py-0.5 landscape-low:text-[10px]">
                   {chat.category}
                 </span>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 xl:p-2 hover:bg-gray-700/50 rounded-lg flex-shrink-0 landscape-low:p-0.5"
+              className="text-gray-400 hover:text-white transition-colors p-1 sm:p-1.5 xl:p-2 hover:bg-gray-700/50 rounded-lg shrink-0 landscape-low:p-0.5"
               aria-label="Zamknij"
             >
               <svg
@@ -163,12 +160,11 @@ export default function ChatModal({
                 <div className="max-w-4xl mx-auto space-y-2 sm:space-y-4 landscape-low:space-y-1">
                   {chat.conversation.map((exchange, index) => {
                     const isExpanded = expandedItems.has(index);
-                    const questionText = isExpanded
-                      ? exchange.question
-                      : truncateText(exchange.question, 100);
-                    const answerText = isExpanded
-                      ? exchange.answer
-                      : truncateText(exchange.answer, 200);
+                    // Zmiana: Leniwe renderowanie pełnego tekstu
+                    // Zamiast pre-obliczać tekst w zmiennych, używamy warunkowego renderowania w JSX.
+                    // truncateText jest wywoływane tylko jeśli !isExpanded, co unika przetwarzania
+                    // długich stringów niepotrzebnie. Pełny tekst (exchange.question/answer) jest
+                    // renderowany tylko gdy expanded, co minimalizuje DOM dla collapsed items.
 
                     return (
                       <div
@@ -181,12 +177,14 @@ export default function ChatModal({
                           onClick={() => toggleItem(index)}
                         >
                           <div className="flex items-start gap-2 sm:gap-4 landscape-low:gap-1">
-                            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm landscape-low:w-4 landscape-low:h-4 landscape-low:text-[10px]">
+                            <div className="shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm landscape-low:w-4 landscape-low:h-4 landscape-low:text-[10px]">
                               Q{index + 1}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-white font-medium leading-relaxed text-sm sm:text-base landscape-low:text-xs">
-                                {questionText}
+                                {isExpanded
+                                  ? exchange.question
+                                  : truncateText(exchange.question, 100)}
                               </p>
                               {!isExpanded &&
                                 exchange.question.length > 100 && (
@@ -195,7 +193,7 @@ export default function ChatModal({
                                   </button>
                                 )}
                             </div>
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               <svg
                                 className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-400 transition-transform landscape-low:w-3 landscape-low:h-3 ${
                                   isExpanded ? "rotate-180" : ""
@@ -222,12 +220,14 @@ export default function ChatModal({
                           } landscape-low:${isExpanded ? "p-1" : "p-0.5"}`}
                         >
                           <div className="flex items-start gap-2 sm:gap-4 landscape-low:gap-1">
-                            <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm landscape-low:w-4 landscape-low:h-4 landscape-low:text-[10px]">
+                            <div className="shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm landscape-low:w-4 landscape-low:h-4 landscape-low:text-[10px]">
                               A
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-gray-300 leading-relaxed whitespace-pre-line text-xs sm:text-sm landscape-low:text-[10px]">
-                                {answerText}
+                                {isExpanded
+                                  ? exchange.answer
+                                  : truncateText(exchange.answer, 200)}
                               </p>
                               {!isExpanded && exchange.answer.length > 200 && (
                                 <button
@@ -346,7 +346,7 @@ export default function ChatModal({
 
                   {/* Mocne strony */}
                   {chat.strengths && chat.strengths.length > 0 && (
-                    <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-xl p-6 border border-green-700/30 landscape-low:p-3 landscape-low:rounded-lg">
+                    <div className="bg-linear-to-br from-green-900/20 to-emerald-900/20 rounded-xl p-6 border border-green-700/30 landscape-low:p-3 landscape-low:rounded-lg">
                       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 landscape-low:text-lg landscape-low:mb-2">
                         <span>✅</span>
                         Mocne strony
@@ -375,7 +375,7 @@ export default function ChatModal({
 
                   {/* Obszary do rozwoju */}
                   {chat.improvements && chat.improvements.length > 0 && (
-                    <div className="bg-gradient-to-br from-orange-900/20 to-amber-900/20 rounded-xl p-6 border border-orange-700/30 landscape-low:p-3 landscape-low:rounded-lg">
+                    <div className="bg-linear-to-br from-orange-900/20 to-amber-900/20 rounded-xl p-6 border border-orange-700/30 landscape-low:p-3 landscape-low:rounded-lg">
                       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 landscape-low:text-lg landscape-low:mb-2">
                         <span>🔶</span>
                         Obszary do rozwoju
@@ -390,7 +390,7 @@ export default function ChatModal({
 
                   {/* Wartość dla pracodawcy */}
                   {chat.employerValue && chat.employerValue.length > 0 && (
-                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl p-6 border border-blue-700/30 landscape-low:p-3 landscape-low:rounded-lg">
+                    <div className="bg-linear-to-br from-blue-900/20 to-purple-900/20 rounded-xl p-6 border border-blue-700/30 landscape-low:p-3 landscape-low:rounded-lg">
                       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 landscape-low:text-lg landscape-low:mb-2">
                         <span>💼</span>
                         Wartość dla pracodawcy
