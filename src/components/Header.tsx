@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
+import { Dialog, DialogPanel, Transition } from "@headlessui/react";
 import avatar from "../assets/images/skulfancy.webp";
 import type { Category, RatingFilter } from "../types";
 
@@ -354,7 +354,7 @@ export default function Header({
               pointerEvents: "auto",
             }}
           >
-            <Dialog.Panel
+            <DialogPanel
               id="mobile-menu"
               className="relative mt-0 w-full bg-gray-800 border-t border-gray-700 px-4 py-4 rounded-b-lg shadow-2xl"
             >
@@ -444,7 +444,7 @@ export default function Header({
               >
                 Zamknij
               </button>
-            </Dialog.Panel>
+            </DialogPanel>
           </div>
         </Dialog>
       </Transition>
