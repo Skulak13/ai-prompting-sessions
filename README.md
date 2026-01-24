@@ -5,6 +5,10 @@
 **Author:** Tomek Skulski ([@Skulak13](https://github.com/Skulak13))  
 **Connect:** [LinkedIn](https://linkedin.com/in/tomasz-skulski) | [GitHub](https://github.com/Skulak13) | [Codewars](https://www.codewars.com/users/Skulak13)
 
+<br>
+
+> 🇵🇱 **[Polish version / Wersja polska](README.pl.md)**
+
 ---
 
 ## 💡 About This Project
